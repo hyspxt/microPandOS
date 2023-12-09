@@ -14,7 +14,7 @@ void freePcb(pcb_t *p) {
 }
 
 pcb_t *allocPcb() {
-    if(list_empty(&pcbFree_h) == 1) return NULL;
+    if(list_empty(&pcbFree_h)) return NULL;
     else{
         pcb_t tmp;
         tmp.p_list = pcbFree_h;
@@ -25,25 +25,37 @@ pcb_t *allocPcb() {
 }
 
 void mkEmptyProcQ(struct list_head *head) {
+    INIT_LIST_HEAD(head);
 }
 
 int emptyProcQ(struct list_head *head) {
+    return (list_empty(head));
 }
 
 void insertProcQ(struct list_head *head, pcb_t *p) {
+    list_add(p, head);
 }
 
 pcb_t *headProcQ(struct list_head *head) {
+    if(emptyProcQ(head)) return NULL;
+    else return container_of(head, pcb_t, p_list);
 }
 
 pcb_t *removeProcQ(struct list_head *head) {
+    if(emptyProcQ(head)) return NULL;
+    else{
+        pcb_t tmp = headProcQ(head);
+        list_del(&tmp->p_list);
+        return tmp;
+    }
 }
 
 pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
+    
 }
 
 int emptyChild(pcb_t *p) {
-    return(list_empty(&pcbTable->p_child));
+    return(list_empty(p->p_child));
 }
 
 void insertChild(pcb_t *prnt, pcb_t *p) {
