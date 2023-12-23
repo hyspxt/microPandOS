@@ -190,11 +190,47 @@ void insertChild(pcb_t *prnt, pcb_t *p) {
     p->p_parent = prnt;
 }
 
-
+/**
+ * @brief      Fa sí che il primo figlio del PCB puntato da p, non abbia piú come padre p. Ritorna NULL se inizialmente non ci sono figli di p.
+ *             Altrimenti, ritorna un puntaotre al PCB del figlio rimosso.
+ * 
+ * @brief-eng  Makes the first child of the PCB pointed to by p no longer have p as its parent. Returns NULL if there are no children of p initially.
+ *             Otherwise, it returns a pointer to the removed child PCB.
+ *
+ * @param      pcb_t p *: puntatore al PCB di cui rimuovere il primo figlio.
+ * @return     pcb_t *: puntatore al PCB del figlio rimosso, NULL se non ci sono figli.
+ */
 pcb_t *removeChild(pcb_t *p) {
-
+    if(emptyChild(p)) return NULL;
+    else{
+        pcb_t *first_child = container_of(p->p_child.next, pcb_t, p_sib);
+        list_del(p->p_child.next);
+        return first_child;
+    }
 }
 
+/**
+ * @brief      Fa sí che il PCB puntato da p non sia piú figlio del suo genitore. Se il PCB puntato da p non ha genitore, restituisce NULL.
+ *             Altrimenti, restituisce p, cioé il puntatore del figlio rimosso. Si fa notare come l'elemento puntato da p possa trovarsi in una 
+ *             posizione arbitraria della lista dei figli del genitore (i.e. p potrebbe non essere il primo figlio del genitore).
+ * 
+ * @brief-eng  Makes the PCB pointed to by p no longer a child of its parent. If the PCB pointed to by p has no parent, it returns NULL.
+ *             Otherwise, it returns p, i.e. the pointer of the removed child. It should be noted that the element pointed to by p can be found in an
+ *             arbitrary position in the list of the parent's children (i.e. p may not be the parent's first child).
+ *
+ * @param      pcb_t p *: puntatore al PCB figlio che deve essere rimosso (in quanto figlio) dal genitore.
+ * @return     pcb_t *: puntatore al PCB del figlio rimosso, NULL se p non ha genitore.
+ */
 pcb_t *outChild(pcb_t *p) {
-
+    if(p->p_parent == NULL) return NULL;
+    else{
+        pcb_t *track;
+        list_for_each_entry(track, &p->p_parent->p_child, p_sib){
+            if(track == p){
+                list_del(&track->p_sib);
+                return p;
+            }
+        }
+        return NULL;
+    }
 }
