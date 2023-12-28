@@ -14,7 +14,6 @@ static int next_pid = 1;
  *
  * @param void
  * @return void
- *
  */
 void initPcbs() {
 
@@ -32,7 +31,6 @@ void initPcbs() {
  *
  * @param pcb_t *p:  Puntatore al PCB da inserire nella lista dei PCB liberi.
  * @return void
- *
  */
 void freePcb(pcb_t *p) {
     list_add(p, &pcbFree_h);
@@ -48,7 +46,6 @@ void freePcb(pcb_t *p) {
  *
  * @param      void
  * @return     pcb_t *: Puntatore al primo PCB libero.
- *
  */
 pcb_t *allocPcb() {
     if(list_empty(&pcbFree_h)) return NULL;
@@ -72,7 +69,6 @@ pcb_t *allocPcb() {
  *
  * @param      list_head head *: Il puntatore alla testa della lista da inizializzare. 
  * @return     void
- *
  */
 void mkEmptyProcQ(struct list_head *head) {
     INIT_LIST_HEAD(head);
@@ -85,7 +81,6 @@ void mkEmptyProcQ(struct list_head *head) {
  *
  * @param      list_head head *: Il puntatore alla testa della lista da controllare.
  * @return     int: TRUE se la lista è vuota, FALSE altrimenti.
- *
  */
 int emptyProcQ(struct list_head *head) {
     return (list_empty(head));
@@ -99,7 +94,6 @@ int emptyProcQ(struct list_head *head) {
  * @param      list_head head *: Il puntatore alla testa della lista in cui inserire il processo.
  * @param      pcb_t p *: Il puntatore al processo da inserire nella lista.
  * @return     void
- *
  */
 void insertProcQ(struct list_head *head, pcb_t *p) {
     list_add_tail(&p->p_list, head);   // é una coda, quindi si dovrebbe inserire dalla tail.
@@ -114,7 +108,6 @@ void insertProcQ(struct list_head *head, pcb_t *p) {
  *
  * @param      list_head head *: Il puntatore alla testa della lista da cui ottenere il primo PCB.
  * @return     pcb_t: Il puntatore al primo PCB nella coda, oppure NULL se la coda é vuota.
- *
  */
 pcb_t *headProcQ(struct list_head *head) {
     if(emptyProcQ(head)) return NULL;
@@ -130,7 +123,6 @@ pcb_t *headProcQ(struct list_head *head) {
  *
  * @param      list_head head *: Il puntatore alla testa della lista da cui rimuovere il primo PCB.
  * @return     pcb_t *: Il puntatore al PCB che é stato rimosso dalla coda dei processi, NULL se la coda é vuota.
- *
  */
 pcb_t *removeProcQ(struct list_head *head) {
     if(emptyProcQ(head)) return NULL;
