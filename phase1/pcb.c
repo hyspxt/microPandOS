@@ -20,7 +20,6 @@ void initPcbs() {
     for (int i = MAXPROC - 1; i >= 0; i--)
     {
       list_add (&pcbTable[i].p_list, &pcbFree_h);
-      // pcbTable[i].p_pid = i + 1;
     }
 }
 
