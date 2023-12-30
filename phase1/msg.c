@@ -147,7 +147,6 @@ void pushMessage(struct list_head *head, msg_t *m)
 msg_t *popMessage(struct list_head *head, pcb_t *p_ptr)
 {
     msg_t *nms = container_of(head->next, msg_t, m_list);
-    pcb_t *mandante = container_of(head->next, msg_t, m_sender);
 
     if (emptyProcQ(head)) return NULL;
     else if (p_ptr == NULL)
