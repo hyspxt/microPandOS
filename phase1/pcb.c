@@ -20,6 +20,7 @@ void initPcbs() {
     for (int i = MAXPROC - 1; i >= 0; i--)
     {
       list_add (&pcbTable[i].p_list, &pcbFree_h);
+      pcbTable[i].p_pid = next_pid++;
     }
 }
 
@@ -32,7 +33,7 @@ void initPcbs() {
  * @return void
  */
 void freePcb(pcb_t *p) {
-    list_add(p, &pcbFree_h);
+    list_add(&p->p_list, &pcbFree_h);
 }
 
 /**
@@ -55,6 +56,8 @@ pcb_t *allocPcb() {
         mkEmptyProcQ(&nPcb->p_list);
         mkEmptyProcQ(&nPcb->p_child);
         mkEmptyProcQ(&nPcb->p_sib);
+
+        nPcb->p_s.status = 0;
         nPcb->p_time = 0;
         nPcb->p_supportStruct = NULL;
         return nPcb;
