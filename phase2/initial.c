@@ -5,6 +5,8 @@ struct list_head readyQueue;
 unsigned int processCount, softBlockCount;
 pcb_PTR blockedPcb_list[SEMDEVLEN - 1], waitPClock_list[SEMDEVLEN - 1];
 
+pcb_PTR ssi_pcb;
+
 extern void test();
 void uTLB_RefillHandler()
 {
@@ -16,7 +18,6 @@ void uTLB_RefillHandler()
 
 int main()
 {
-
     // here we should populate the processor 0 - Pass Up Vector
     passupvector_t *pUV = (passupvector_t *)PASSUPVECTOR;
     pUV->tlb_refill_handler = (memaddr)uTLB_RefillHandler;
@@ -24,50 +25,40 @@ int main()
     // pUV->exception_handler = (memaddr)exceptionHandler;
     // pUV->exception_stackPtr = (memaddr)KERNELSTACK;
 
+    // initialize the data structures defined in phase1
     initPcbs();
     initMsgs();
 
+    // initialize the global variables
     processCount = 0;
     softBlockCount = 0;
     mkEmptyProcQ(&readyQueue);
     current_process = NULL;
-    for (int i = 0; i < SEMDEVLEN; i++)
-    {
-        blockedPcb_list[i] = NULL;
-        waitPClock_list[i] = NULL;
-    }
+    mkEmptyProcQ(&blockedPcb_list);
+    mkEmptyProcQ(&waitPClock_list);
+    ssi_pcb = NULL;
 
-    LDIT(PSECOND); // load system-wide interval timer with 100000 ms
+    // load system-wide interval timer with 100000 ms
+    LDIT(PSECOND); 
 
-    // instantiate the init process
-    pcb_PTR init = allocPcb();
-
-    /*
-    first of all, let's set up the processor state for the init process
-    In order:
-    - ALLOFF set all the bits to 0 (ergo reset everything)
-    - IEPON set the Interrupt Enable Previous bit to 1 (interrupts are enabled)
-    - TEBITON set the Timer Interrupt bit to 1 (timer interrupt is enabled)
-    */
-    init->p_s.status = ALLOFF | IEPON | IECON | TEBITON;
-    // set SP to RAMTOP and PC to the address of SSI_function_entry_point
-    RAMTOP (init->p_s.reg_sp);
-   
+    // instantiate the SSI PCB
+    ssi_pcb = allocPcb();
+    ssi_pcb->p_pid = 0;
+    ssi_pcb->p_s.status |= ALLOFF | IEPON | IMON | USERPON; // interrupts enabled setting mask bit to 1
+    RAMTOP (ssi_pcb->p_s.reg_sp); // set SP to RAMTOP and PC to the address of SSI_function_entry_point
+    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) initSSI;
     // init->p_s.reg_t9 = init->p_s.pc_epc = (memaddr)test;
-    init->p_s.pc_epc = init->p_s.reg_t9  = (memaddr) test;
-
-    // set all process tree fields to NULL
-    init->p_parent = NULL;
-    init->p_child.next = NULL;
-    init->p_child.prev = NULL; 
-    init->p_sib.next = NULL;
-    init->p_sib.prev = NULL;
-
-    init->p_time = 0;
-    init->p_supportStruct = NULL;
-
-    // place its pcb in the ready queue and increment process count
-    insertProcQ(&readyQueue, init);
+    insertProcQ(&readyQueue, ssi_pcb);
+    processCount++;
+    
+    // instantiate the test PCB
+    pcb_PTR test_pcb = allocPcb();
+    test_pcb->p_pid = 1;
+    test_pcb->p_s.status |= IEPON | IMON | TEBITON | USERPON; // Enable interrupts, set interrupt mask to all 1s, enable PLT              // Enable kernel mode
+    RAMTOP(test_pcb->p_s.reg_sp);
+    test_pcb->p_s.reg_sp -= 2 * PAGESIZE; // NOTE: specs say FRAMESIZE???
+    test_pcb->p_s.pc_epc = test_pcb->p_s.reg_t9  = (memaddr) test;
+    insertProcQ(&readyQueue, test_pcb);
     processCount++;
 
     return 0;

@@ -27,36 +27,26 @@ LDFLAGS = -G 0 -nostdlib -T $(UMPS3_DATA_DIR)/umpscore.ldscript
 
 # Add the location of crt*.S to the search path
 VPATH = $(UMPS3_DATA_DIR)
-BINDIR  := ./bin
-SRCDIR1 := ./phase1
-SRCDIR2 := ./phase2
-VMDIR  := ./vm
-FILES := $(filter-out p1test, $(basename $(notdir $(wildcard $(SRCDIR1)/*.c))) $(basename $(notdir $(wildcard $(SRCDIR2)/*.c)))) libumps crtso
-OBJECTS = $(addprefix $(BINDIR)/, $(addsuffix .o,$(FILES)))
-HEADERS = $(wildcard ./h/*.h) $(wildcard ./h/umps/*.h)
 
-$(shell mkdir -p $(BINDIR))
-$(shell mkdir -p $(VMDIR))
+# Object files
+PHASE1 = ./phase1/pcb.o ./phase1/msg.o
+PHASE2 = ./phase2/initial.o ./phase2/scheduler.o ./phase2/exceptions.o ./phase2/interrupts.o ./phase2/ssi.o
 
 .PHONY : all clean
 
-all : $(BINDIR)/kernel.core.umps
+all : kernel.core.umps
 
-$(BINDIR)/kernel.core.umps : $(BINDIR)/kernel
+kernel.core.umps : kernel
 	umps3-elf2umps -k $<
 
-$(BINDIR)/kernel : $(OBJECTS)
+kernel : $(PHASE1) $(PHASE2) ./phase2/p2test.o crtso.o libumps.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
+
 clean :
-	-rm -f *.o ./phase1/*.o kernel kernel.*.umps ./phase2/*.o
-	-rm -rf ./bin
-	-rm -rf ./vm
+	-rm -f *.o ./phase1/*.o ./phase2/*.o kernel kernel.*.umps 
+
 
 # Pattern rule for assembly modules
-$(BINDIR)/%.o: $(SRCDIR1)/%.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
-$(BINDIR)/%.o: $(SRCDIR2)/%.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
-$(BINDIR)/%.o: %.S
-	$(CC) $(CFLAGS) -c $< -o $@
+%.o : %.S
+	$(CC) $(CFLAGS) -c -o $@ $<

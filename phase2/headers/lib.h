@@ -1,10 +1,11 @@
 #ifndef LIB_H_INCLUDED
 #define LIB_H_INCLUDED
 
+
 // necessary libraries
 // #include "umps3/umps/arch.h"
 // #include "umps3/umps/cp0.h"
-// #include "umps3/umps/libumps.h"
+//  #include "umps3/umps/libumps.h"
 #include "../../phase1/headers/pcb.h"
 #include "../../phase1/headers/msg.h"
 
@@ -19,5 +20,7 @@ extern pcb_PTR blockedPcb_list[SEMDEVLEN - 1], waitPClock_list[SEMDEVLEN -1];
 
 
 // function prototypes
+void initSSI();
+void systemServiceInterface();
 
 #endif
