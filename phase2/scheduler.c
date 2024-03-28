@@ -20,7 +20,7 @@ void scheduler()
 
                 /* should enable interrupts and disable plt*/
                 unsigned int status = getSTATUS();
-                status &= !TEBITON | IEPON | IMON;
+                status &= (!TEBITON) | IEPON | IMON;
                 setSTATUS(status);
                 WAIT();
             }

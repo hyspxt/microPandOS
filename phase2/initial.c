@@ -69,14 +69,15 @@ int main()
     */
     ssi_pcb->p_s.status = ALLOFF | IEPON | IMON; // kernel mode is by default when KUc = 0
     RAMTOP(ssi_pcb->p_s.reg_sp);
-    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) initSSI;
+    // ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) initSSI;
     insertProcQ(&readyQueue, ssi_pcb);
     processCount++;
     
     /* Instantiate the test PCB,
         This one need to have interrupts enabled, processor local-timer enabled, the SP set to RAMTOP 
         and the PC set to the address of test */
-    pcb_PTR test_pcb = allocPcb();
+    pcb_PTR test_pcb = NULL;
+    test_pcb = allocPcb();
     test_pcb->p_pid = 2;
     test_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
     RAMTOP(test_pcb->p_s.reg_sp);
