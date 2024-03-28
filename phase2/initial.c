@@ -22,6 +22,13 @@ void uTLB_RefillHandler()
     LDST((state_t *)0x0FFFF000);
 }
 
+/**
+ * @brief This module contains the microPandOS entry point, that is the Nucleus initialization.
+ *        after the initialization, the Nucleus will call the scheduler.
+ *          
+ * @param void
+ * @return int
+ */
 int main()
 {
     /* Here we should populate the processor 0 - Pass Up Vector */
@@ -78,5 +85,6 @@ int main()
     insertProcQ(&readyQueue, test_pcb);
     processCount++;
 
+    scheduler();
     return 0;
 }

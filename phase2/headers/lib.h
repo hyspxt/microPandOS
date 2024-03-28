@@ -20,10 +20,12 @@ extern struct list_head readyQueue, blockedPcbQueue, pseudoClockQueue;
 void initSSI();
 void systemServiceInterface();
 
-void uTLB_RefillHandler(void);
-void exceptionHandler(void);
-void syscallHandler(void);
+void uTLB_RefillHandler();
+void exceptionHandler();
+void syscallHandler();
 int receiveMessage(pcb_PTR, unsigned int);
 int sendMessage(pcb_PTR, unsigned int);
+
+void scheduler();
 
 #endif
