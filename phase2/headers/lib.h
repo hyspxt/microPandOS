@@ -1,11 +1,10 @@
 #ifndef LIB_H_INCLUDED
 #define LIB_H_INCLUDED
 
-
 // necessary libraries
 // #include "umps3/umps/arch.h"
 // #include "umps3/umps/cp0.h"
-//  #include "umps3/umps/libumps.h"
+#include "umps/libumps.h"
 #include "../../phase1/headers/pcb.h"
 #include "../../phase1/headers/msg.h"
 
@@ -14,13 +13,17 @@
 
 // variables
 extern unsigned int processCount, softBlockCount;
-extern struct list_head readyQueue;
 extern pcb_PTR current_process;
-extern pcb_PTR blockedPcb_list[SEMDEVLEN - 1], waitPClock_list[SEMDEVLEN -1];
-
+extern struct list_head readyQueue, blockedPcbQueue, pseudoClockQueue;
 
 // function prototypes
 void initSSI();
 void systemServiceInterface();
+
+void uTLB_RefillHandler(void);
+void exceptionHandler(void);
+void syscallHandler(void);
+int receiveMessage(pcb_PTR, unsigned int);
+int sendMessage(pcb_PTR, unsigned int);
 
 #endif

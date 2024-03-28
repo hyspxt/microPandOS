@@ -31,7 +31,8 @@ void initMsgs()
  */
 void freeMsg(msg_t *m)
 {
-    list_add(m, &msgFree_h);
+    list_del(&m->m_list);
+    list_add_tail(&m->m_list,&msgFree_h);
 }
 
 
@@ -49,25 +50,16 @@ void freeMsg(msg_t *m)
  */
 msg_t *allocMsg()
 {
-
-    if(list_empty(&msgFree_h)) return NULL;
-    else {
-        msg_t *nms = container_of(msgFree_h.next,msg_t,m_list);
-        list_del(&nms->m_list);
+   if(list_empty(&msgFree_h)) return NULL;
+    else{
+        msg_t *nms = container_of(msgFree_h.next, msg_t, m_list);
+        list_del(msgFree_h.next);
+        mkEmptyMessageQ(&nms->m_list);
+        // here we re-initialize the message
+        nms->m_sender = NULL;
+        nms->m_payload = 0;
         return nms;
     }
-    return NULL;
-
-    // if (list_empty(&msgFree_h) == 1)
-    //     return NULL;
-    // else if (list_empty(&msgFree_h) == 0)
-    // {
-    //     msg_t *nms = container_of(msgFree_h.next, msg_t, m_list);
-    //     list_del(&nms->m_list);
-    //     return nms;
-    // }
-    // else
-    //     return NULL;
 }
 
 /**
@@ -94,7 +86,7 @@ void mkEmptyMessageQ(struct list_head *head)
  */
 int emptyMessageQ(struct list_head *head)
 {
-    return (list_empty(head));
+    return list_empty(head);
 }
 
 /**
@@ -109,7 +101,7 @@ int emptyMessageQ(struct list_head *head)
  */
 void insertMessage(struct list_head *head, msg_t *m)
 {
-    list_add_tail(m, head);
+    list_add_tail(&m->m_list,head);
 }
 
 
@@ -125,7 +117,7 @@ void insertMessage(struct list_head *head, msg_t *m)
  */
 void pushMessage(struct list_head *head, msg_t *m)
 {
-    list_add(m, head);
+    list_add(&m->m_list,head);
 }
 
 
@@ -144,31 +136,22 @@ void pushMessage(struct list_head *head, msg_t *m)
  * @return msg_t *: Il puntatore al messaggio rimosso, NULL se la coda dei messaggi era vuota o se non é stato trovato nessun messaggio da p ptr.
  */
 
-msg_t *popMessage(struct list_head *head, pcb_t *p_ptr)
+msg_t *popMessage(struct list_head *head, pcb_PTR p_ptr)
 {
-    msg_t *nms = container_of(head->next, msg_t, m_list);
-
-    if (emptyProcQ(head)) return NULL;
-    else if (p_ptr == NULL)
-    {
-        nms = container_of(head->next, msg_t, m_list);
-        list_del(&nms->m_list);
+    if(emptyMessageQ(head)) return NULL;
+    if(p_ptr == NULL){
+        msg_t *nms = container_of(head->next, msg_t, m_list);
+        list_del(head->next);
         return nms;
     }
-    else
-    {
-        struct list_head *iter;
-        for (iter = (head)->next; iter != (head); iter = iter->next)
-        {
-            nms = container_of(iter, msg_t, m_list);
-            if (nms->m_sender == p_ptr)
-            {
-                list_del(&nms->m_list);
-                return iter;
-            }
+    msg_t *iter;
+    list_for_each_entry(iter, head, m_list){
+        if(iter->m_sender == p_ptr){
+            list_del(&iter->m_list);
+            return(iter);
         }
-        return NULL;
     }
+    return NULL;
 }
 
 
