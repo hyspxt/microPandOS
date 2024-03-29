@@ -11,7 +11,7 @@ struct list_head readyQueue;
 struct list_head blockedPcbQueue;
     /* queue of waiting PCBs that requested a WaitForClock service to the SSI */
 struct list_head pseudoClockQueue;
-pcb_PTR ssi_pcb;
+pcb_PTR ssi_pcb, new_pcb;;
 extern void test();
 
 void uTLB_RefillHandler()
@@ -20,6 +20,23 @@ void uTLB_RefillHandler()
     setENTRYLO(0x00000000);
     TLBWR();
     LDST((state_t *)0x0FFFF000);
+}
+
+/**
+ * @brief Copies all values from the PCB state source to dest.
+ *          
+ * @param void
+ * @return int
+ */
+void copyState(state_t *src, state_t *dest){
+    dest->entry_hi = src->entry_hi;
+	dest->cause = src->cause;
+	dest->status = src->status;
+	dest->pc_epc = src->pc_epc;
+	for(int i=0; i<STATE_GPR_LEN; i++)
+		dest->gpr[i] = src->gpr[i];
+	dest->hi = src->hi;
+	dest->lo = src->lo;
 }
 
 /**
@@ -69,21 +86,21 @@ int main()
     */
     ssi_pcb->p_s.status = ALLOFF | IEPON | IMON; // kernel mode is by default when KUc = 0
     RAMTOP(ssi_pcb->p_s.reg_sp);
-    // ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) initSSI;
+    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) initSSI;
     insertProcQ(&readyQueue, ssi_pcb);
     processCount++;
     
     /* Instantiate the test PCB,
         This one need to have interrupts enabled, processor local-timer enabled, the SP set to RAMTOP 
         and the PC set to the address of test */
-    pcb_PTR test_pcb = NULL;
-    test_pcb = allocPcb();
-    test_pcb->p_pid = 2;
-    test_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
-    RAMTOP(test_pcb->p_s.reg_sp);
-    test_pcb->p_s.reg_sp -= 2 * PAGESIZE; // FRAMESIZE according to specs??
-    test_pcb->p_s.pc_epc = test_pcb->p_s.reg_t9  = (memaddr) test;
-    insertProcQ(&readyQueue, test_pcb);
+    new_pcb = NULL;
+    new_pcb = allocPcb();
+    new_pcb->p_pid = 2;
+    new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
+    RAMTOP(new_pcb->p_s.reg_sp);
+    new_pcb->p_s.reg_sp -= 2 * PAGESIZE; // FRAMESIZE according to specs??
+    new_pcb->p_s.pc_epc = new_pcb->p_s.reg_t9  = (memaddr) test;
+    insertProcQ(&readyQueue, new_pcb);
     processCount++;
 
     scheduler();
