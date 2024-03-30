@@ -82,7 +82,7 @@ void syscallHandler()
         break;
     }
 
-    LDST((state_t *) BIOSDATAPAGE);
+    LDST((state_t *)BIOSDATAPAGE);
     current_process->p_s.pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
 }
 
