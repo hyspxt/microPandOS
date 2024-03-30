@@ -8,8 +8,8 @@ void init_SSI()
 void systemServiceInterface()
 {
 
-	pcb_PTR sender;
-	ssi_payload_t payload;
+	// pcb_PTR sender;
+	// ssi_payload_t payload;
 
 	while (TRUE)
 	{

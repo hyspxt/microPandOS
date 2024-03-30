@@ -28,15 +28,15 @@ void uTLB_RefillHandler()
  * @param void
  * @return int
  */
-void copyState(state_t *src, state_t *dest){
-    dest->entry_hi = src->entry_hi;
-	dest->cause = src->cause;
-	dest->status = src->status;
+void stateCpy(state_t *src, state_t *dest){
+    dest->status = src->status;
 	dest->pc_epc = src->pc_epc;
+    dest->cause = src->cause;
+    dest->entry_hi = src->entry_hi;
+    dest->hi = src->hi;
+	dest->lo = src->lo;
 	for(int i=0; i<STATE_GPR_LEN; i++)
 		dest->gpr[i] = src->gpr[i];
-	dest->hi = src->hi;
-	dest->lo = src->lo;
 }
 
 /**
@@ -86,7 +86,7 @@ int main()
     */
     ssi_pcb->p_s.status = ALLOFF | IEPON | IMON; // kernel mode is by default when KUc = 0
     RAMTOP(ssi_pcb->p_s.reg_sp);
-    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) initSSI;
+    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) init_SSI;
     insertProcQ(&readyQueue, ssi_pcb);
     processCount++;
     

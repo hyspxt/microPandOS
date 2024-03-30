@@ -188,6 +188,29 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
 }
 
 /**
+ * @brief      Cerca il PCB puntato da p nella coda dei processi puntata da head. Ritorna NULL se il PCB non é presente nella coda, altrimenti
+ *             ritorna un puntatore al PCB cercato. Corrisponde alla precedente outProcQ, ma non rimuove il PCB dalla coda.
+ * 
+ * @brief-eng  Searches for the PCB pointed to by p in the process queue pointed to by head. Returns NULL if the PCB is not present in the queue,
+ *             otherwise it returns a pointer to the searched PCB. Corresponds to the previous outProcQ, but does not remove the PCB from the queue.
+ *
+ * @param      list_head head *: puntatore alla testa della coda dei processi in cui cercare il PCB.
+ * @param      pcb_t p *: puntatore al PCB da cercare nella coda dei processi.
+ * @return     pcb_t *: puntatore al PCB cercato, NULL se il PCB non é presente nella coda.
+ */
+pcb_t *searchProcQ(struct list_head *head, pcb_t *p) {
+    if(p == NULL) return NULL;
+    struct list_head* iter;
+    list_for_each(iter, head) {
+        if (iter == &p->p_list) {
+            return p;
+        }
+    } 
+    return NULL;
+}
+
+
+/**
  * @brief      Controlla se un certo PCB puntato ha dei figli. Ritorna TRUE se non ne ha nessuno, FALSE altrimenti.
  * 
  * @brief-eng  Checks if a certain PCB pointed to has children, returning TRUE if it has no one, FALSE otherwise.
