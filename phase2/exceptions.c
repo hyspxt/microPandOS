@@ -1,30 +1,52 @@
 #include "./headers/lib.h"
 struct list_head waitingMsgQueue; /* additional queue to keep PCBs who are attending msgs*/
 
-int send(pcb_PTR dest, unsigned int payload) // we don't need the sender cause it's async
+int send(unsigned int dest, unsigned int payload)
 {
+    /* parameter comes in memory address form, so we need to do a casting */
+    pcb_PTR destptr = (pcb_PTR)dest;
+
     msg_PTR msg = allocMsg();
     if (msg == NULL)
         return MSGNOGOOD;
     msg->m_sender = current_process;
     msg->m_payload = payload;
 
-    if (searchProcQ(&pcbFree_h, dest) == dest)
+    if (searchProcQ(&pcbFree_h, destptr) == destptr)
         return DEST_NOT_EXIST;
     else
     {
-        if (searchProcQ(&waitingMsgQueue, dest) == dest) {// awaken the process and put it in the ready queue
-            pcb_PTR awaitProc = outProcQ(&waitingMsgQueue, dest);
+        if (searchProcQ(&waitingMsgQueue, destptr) == destptr)
+        { // awaken the process and put it in the ready queue
+            pcb_PTR awaitProc = outProcQ(&waitingMsgQueue, destptr);
             insertProcQ(&readyQueue, awaitProc);
         }
-        pushMessage(&dest->msg_inbox, msg);
+        pushMessage(&destptr->msg_inbox, msg);
         return 0; // place 0 in v0 register if successful
     }
 }
 
-void recv()
+int recv(unsigned int sender, unsigned int payload)
 {
-    // TODO
+    /* parameter comes in memory address form, so we need to do a casting */
+    pcb_PTR senderptr = (pcb_PTR)sender;
+
+    /* work with ANYMESSAGE too based on how popMessage works*/
+    msg_PTR msg = popMessage(&current_process->msg_inbox, senderptr);
+    if (msg == NULL) // so there aren't any message in the inbox, we should put it in waiting state
+    {
+        insertProcQ(&waitingMsgQueue, senderptr);
+        stateCpy((state_t *)BIOSDATAPAGE, &current_process->p_s);
+
+        // TODO update the current process timer when GetCpuTime is implemented
+        scheduler();
+        return 0;
+    }
+    else
+    {
+        *&payload = msg->m_payload;
+        return ((int)msg->m_sender); // return the sender's identifier in v0 register, TODO check if this casting is correct
+    }
 }
 
 /**
@@ -53,12 +75,15 @@ void syscallHandler()
     switch (syscallCode)
     {
     case SENDMESSAGE:
-        current_process->p_s.reg_v0 = send((pcb_PTR) current_process->p_s.reg_a1, current_process->p_s.reg_a2);  // TODO casting might actually break something
+        current_process->p_s.reg_v0 = send(current_process->p_s.reg_a1, current_process->p_s.reg_a2);
         break;
     case RECEIVEMESSAGE:
-        recv();
+        current_process->p_s.reg_v0 = recv(current_process->p_s.reg_a1, current_process->p_s.reg_a2); // might need to pass as a pointer ??
         break;
     }
+
+    LDST((state_t *) BIOSDATAPAGE);
+    current_process->p_s.pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
 }
 
 void progTrapHandler()
@@ -84,7 +109,7 @@ void exceptionHandler()
     The bitwise operation (&) with GETEXECCODE will isolate the exception code from the cause register.
     Then, the right shift (>>) will move the bits to the right, in position 0-4, so that the exception code will be in the least significant bits. */
     unsigned int excCode = (cause & GETEXECCODE) >> CAUSESHIFT;
-    stateCpy((state_t *)BIOSDATAPAGE, &current_process->p_s);
+    stateCpy((state_t *)BIOSDATAPAGE, &current_process->p_s); // might be not necessary
 
     if (excCode == IOINTERRUPTS)
     {

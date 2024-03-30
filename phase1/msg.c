@@ -135,7 +135,6 @@ void pushMessage(struct list_head *head, msg_t *m)
  * 
  * @return msg_t *: Il puntatore al messaggio rimosso, NULL se la coda dei messaggi era vuota o se non é stato trovato nessun messaggio da p ptr.
  */
-
 msg_t *popMessage(struct list_head *head, pcb_PTR p_ptr)
 {
     if(emptyMessageQ(head)) return NULL;
