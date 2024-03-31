@@ -21,18 +21,20 @@ extern struct list_head pcbFree_h;
 // function prototypes
 void stateCpy(state_t *, state_t *);
 
-void init_SSI();
-void systemServiceInterface();
+void SSILoop();
+unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
+unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
 
 void uTLB_RefillHandler();
 void exceptionHandler();
 void interruptHandler();
 void syscallHandler();
-int send (unsigned int dest, unsigned int payload);
-int recv(unsigned int sender, unsigned int payload);
+int send(unsigned int, unsigned int);
+int recv(unsigned int, unsigned int);
 void progTrapHandler();
-int receiveMessage(pcb_PTR, unsigned int);
-int sendMessage(pcb_PTR, unsigned int);
+
+
+
 
 void scheduler();
 

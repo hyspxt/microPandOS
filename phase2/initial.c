@@ -86,7 +86,7 @@ int main()
     */
     ssi_pcb->p_s.status = ALLOFF | IEPON | IMON; // kernel mode is by default when KUc = 0
     RAMTOP(ssi_pcb->p_s.reg_sp);
-    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) init_SSI;
+    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) SSILoop;
     insertProcQ(&readyQueue, ssi_pcb);
     processCount++;
     
