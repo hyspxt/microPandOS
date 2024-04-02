@@ -28,15 +28,42 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 }
 
 /**
- * @brief Terminates a process. If the process is the one that requested the service, then the process is terminated.
+ * @brief Terminates/kill a process. If the process is the one that requested the service, then the process is terminated.
+ * 		  When a process is terminated, in addiction all progeny of that process must be terminated.
  * 
  * @param sender the process that requested the service
  * @return void
  */
 void terminateProcess(pcb_PTR sender)
 {
-	// TODO 
+	if(sender != NULL){
+		/* iteratively, we explore the PCB tree structure using sender as a root, then recursively we kill his PCB childern. 
+	       This continue while sender has any children.*/
+		while(!emptyChild(sender)){
+			terminateProcess(removeChild(sender));
+		}
+		processCount--;
+		outChild(sender);
+		freePcb(sender);
+	}
 }
+
+/**
+ * @brief Handles the synchronous I/O requests. TODO 
+ * 
+ * @param doioPTR the IO request
+ * @param sender the process that requested the service
+ * @return void
+ */
+void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender){
+	
+	/* if a process request the DOIO service, it must be blocked on the correct device */
+	softBlockCount++;
+	// TODO
+
+
+}
+
 
 /**
  * @brief The SSI loop. It is responsible for handling the SSI requests.
@@ -84,9 +111,11 @@ unsigned int SSIRequest(pcb_PTR sender, ssi_payload_PTR payload){
 				terminateProcess(sender);
 			}
 			else{
-				res = 0;
 				terminateProcess(payload->arg);
 			}
+			break;
+		case DOIO:
+			/* TODO implement the IO service */
 			break;
 	}
 	return res;

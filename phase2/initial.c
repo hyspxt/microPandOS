@@ -6,11 +6,9 @@ unsigned int processCount, softBlockCount;
 /* Queue of PCBs that are in READY state. It is a tail pointer. */
 struct list_head readyQueue;
 
-/* Blocked PCBs Queues */
-    /* blocked PCBs for each external (sub)device*/
-struct list_head blockedPcbQueue;
-    /* queue of waiting PCBs that requested a WaitForClock service to the SSI */
+struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue, blockedTerminalTransmQueue,blockedTerminalRecvQueue;
 struct list_head pseudoClockQueue;
+
 pcb_PTR ssi_pcb, new_pcb;;
 extern void test();
 
@@ -65,7 +63,15 @@ int main()
     current_process = NULL;
 
     mkEmptyProcQ(&readyQueue);
-    mkEmptyProcQ(&blockedPcbQueue);
+    /* Blocked PCBs Queues */
+      /* blocked PCBs for each external (sub)device*/
+    mkEmptyProcQ(&blockedDiskQueue);
+    mkEmptyProcQ(&blockedFlashQueue);
+    mkEmptyProcQ(&blockedEthernetQueue);
+    mkEmptyProcQ(&blockedPrinterQueue);
+    mkEmptyProcQ(&blockedTerminalTransmQueue);
+    mkEmptyProcQ(&blockedTerminalRecvQueue);
+      /* queue of waiting PCBs that requested a WaitForClock service to the SSI */
     mkEmptyProcQ(&pseudoClockQueue);
 
 
