@@ -1,7 +1,12 @@
 #include "./headers/lib.h"
 
-// if SSI ever gets terminated, the system must be stopped performing an emergency shutdown
-
+/* 
+ * @brief Creates a child process of the parent process. Then, the child process is inserted in the ready queue.
+ * 
+ * @param sup the support structure of the new process
+ * @param parent the parent process
+ * @return int the address of the new process
+ */
 unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 {
 	pcb_PTR new_pcb = allocPcb();
@@ -22,12 +27,25 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 	}
 }
 
+/**
+ * @brief Terminates a process. If the process is the one that requested the service, then the process is terminated.
+ * 
+ * @param sender the process that requested the service
+ * @return void
+ */
 void terminateProcess(pcb_PTR sender)
 {
 	// TODO 
 }
 
-
+/**
+ * @brief The SSI loop. It is responsible for handling the SSI requests.
+ * 		  If everything goes well, the SSI loop will send a message to the process that requested the service.
+ * 		  If SSI ever gets terminated, the system must be stopped performing an emergency shutdown.
+ * 
+ * @param void
+ * @return void
+ */
 void SSILoop(){
 	while(TRUE){
 		unsigned int senderAddr, result;
@@ -44,6 +62,13 @@ void SSILoop(){
 	}
 }
 
+/**
+ * @brief Handles the SSI requests during SSILoop.
+ * 
+ * @param sender the process that requested the service
+ * @param payload the payload of the message
+ * @return unsigned int the result of the service
+ */
 unsigned int SSIRequest(pcb_PTR sender, ssi_payload_PTR payload){
 	unsigned int code, res = 0;
 	code = payload->service_code;

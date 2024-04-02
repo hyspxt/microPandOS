@@ -20,7 +20,6 @@ void initMsgs()
     }
 }
 
-
 /**
  * @brief Inserisce l'elemento puntato da p nella lista dei messaggi liberi (msgFree).
  * 

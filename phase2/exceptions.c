@@ -1,6 +1,14 @@
 #include "./headers/lib.h"
 struct list_head waitingMsgQueue; /* additional queue to keep PCBs who are attending msgs*/
 
+/**
+ * @brief Sends a message to a PCB identified by dest address. If the process is not in the system, the message is not sent.
+ *        If the process is waiting for a message, it is awaken and put in the ready queue.
+ *
+ * @param dest the destination process
+ * @param payload the message to be sent
+ * @return int
+ */
 int send(unsigned int dest, unsigned int payload)
 {
     /* parameter comes in memory address form, so we need to do a casting */
@@ -26,6 +34,14 @@ int send(unsigned int dest, unsigned int payload)
     }
 }
 
+/**
+ * @brief Receives a message from a PCB identified by sender address. If the process is not in the system, the message is not received.
+ *        If the process is waiting for a message, it is put in the waiting queue.
+ *
+ * @param sender the sender PCB address
+ * @param payload the message to be received
+ * @return int
+ */
 int recv(unsigned int sender, unsigned int payload)
 {
     /* parameter comes in memory address form, so we need to do a casting */
@@ -91,8 +107,8 @@ void progTrapHandler()
 }
 
 /**
- * @brief The central exception handler, that redirects the control to the appropriate handler,
- *        based on the cause/type of the singular exception.
+ * @brief The central exception handler that redirects the control to the appropriate handler,
+ *        based on the cause/type of the singular exception occurred.
  *
  * @param void
  * @return void
