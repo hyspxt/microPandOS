@@ -2,7 +2,6 @@
 
 static pcb_t pcbTable[MAXPROC];
 LIST_HEAD(pcbFree_h);
-
 static int next_pid = 1;
 
 /**
@@ -20,9 +19,44 @@ void initPcbs() {
     for (int i = MAXPROC - 1; i >= 0; i--)
     {
       list_add (&pcbTable[i].p_list, &pcbFree_h);
-      pcbTable[i].p_pid = next_pid++;
     }
 }
+
+/**
+ * @brief Fornisce valori di default al pcb quando viene allocato. 
+ * 
+ * @brief-eng Provides default values to the pcb when allocated.
+ * 
+ * @param void
+ * @return void
+ */
+static void initPcbValues(pcb_PTR p) {
+    
+    // initialize the pcb structures
+    INIT_LIST_HEAD(&p->p_list);
+    p->p_parent = NULL;
+    INIT_LIST_HEAD(&p->p_child);
+    INIT_LIST_HEAD(&p->p_sib);
+    INIT_LIST_HEAD(&p->msg_inbox);
+
+    p->p_s.cause = 0;
+    p->p_s.entry_hi = 0;
+    p->p_supportStruct = NULL;
+
+    /* Set up the general purpose register, not sure if is necessary, since p->p_s.t9 exists */
+    for(int i = 0; i < STATE_GPR_LEN; i++)
+        p->p_s.gpr[i] = 0;
+
+    p->p_s.hi = 0;
+    p->p_s.lo = 0;
+    p->p_s.pc_epc = 0;
+    p->p_s.status = 0;
+    p->p_time = 0;
+   
+    p->p_pid = next_pid++;
+}
+
+
 
 /**
  * @brief      Aggiunge un PCB alla lista dei PCB liberi. Dunque, inserisce l elemento puntato da p nella lista dei PCB liberi (pcbFree_h).
@@ -33,7 +67,8 @@ void initPcbs() {
  * @return void
  */
 void freePcb(pcb_t *p) {
-    list_add(&p->p_list, &pcbFree_h);
+    list_del(&p->p_list); // remove the pcb from the list of pcbs (where it was before)
+    list_add_tail(&p->p_list, &pcbFree_h);
 }
 
 /**
@@ -51,15 +86,8 @@ pcb_t *allocPcb() {
     if(list_empty(&pcbFree_h)) return NULL;
     else{
         pcb_t *nPcb = container_of(pcbFree_h.next,pcb_t,p_list);
-        nPcb->p_parent = NULL;
-        list_del(&nPcb->p_list);
-        mkEmptyProcQ(&nPcb->p_list);
-        mkEmptyProcQ(&nPcb->p_child);
-        mkEmptyProcQ(&nPcb->p_sib);
-
-        nPcb->p_s.status = 0;
-        nPcb->p_time = 0;
-        nPcb->p_supportStruct = NULL;
+        list_del(pcbFree_h.next);
+        initPcbValues(nPcb);
         return nPcb;
     }
 }
@@ -85,7 +113,7 @@ void mkEmptyProcQ(struct list_head *head) {
  * @return     int: TRUE se la lista è vuota, FALSE altrimenti.
  */
 int emptyProcQ(struct list_head *head) {
-    return (list_empty(head));
+    return list_empty(head);
 }
 
 /**
@@ -129,8 +157,8 @@ pcb_t *headProcQ(struct list_head *head) {
 pcb_t *removeProcQ(struct list_head *head) {
     if(emptyProcQ(head)) return NULL;
     else{
-        pcb_t *removed_p = container_of(head->next, pcb_t, p_list);
-        list_del(head->next);
+        pcb_t *removed_p = container_of(list_next(head), pcb_t, p_list);
+        list_del(list_next(head));
         return removed_p;
     }
 }
@@ -148,15 +176,39 @@ pcb_t *removeProcQ(struct list_head *head) {
  * @return     Puntatore al PCB rimosso dalla coda dei processi, NULL se il PCB non é presente nella coda.
  */
 pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
-    pcb_t *track;
-    list_for_each_entry(track, head, p_list){
-        if(track == p){
-            list_del(&track->p_list);
+    if(p == NULL) return NULL;
+    struct list_head* iter;
+    list_for_each(iter, head) {
+        if (iter == &p->p_list) {
+            list_del(iter);
             return p;
         }
     }
     return NULL;
 }
+
+/**
+ * @brief      Cerca il PCB puntato da p nella coda dei processi puntata da head. Ritorna NULL se il PCB non é presente nella coda, altrimenti
+ *             ritorna un puntatore al PCB cercato. Corrisponde alla precedente outProcQ, ma non rimuove il PCB dalla coda.
+ * 
+ * @brief-eng  Searches for the PCB pointed to by p in the process queue pointed to by head. Returns NULL if the PCB is not present in the queue,
+ *             otherwise it returns a pointer to the searched PCB. Corresponds to the previous outProcQ, but does not remove the PCB from the queue.
+ *
+ * @param      list_head head *: puntatore alla testa della coda dei processi in cui cercare il PCB.
+ * @param      pcb_t p *: puntatore al PCB da cercare nella coda dei processi.
+ * @return     pcb_t *: puntatore al PCB cercato, NULL se il PCB non é presente nella coda.
+ */
+pcb_t *searchProcQ(struct list_head *head, pcb_t *p) {
+    if(p == NULL) return NULL;
+    struct list_head* iter;
+    list_for_each(iter, head) {
+        if (iter == &p->p_list) {
+            return p;
+        }
+    } 
+    return NULL;
+}
+
 
 /**
  * @brief      Controlla se un certo PCB puntato ha dei figli. Ritorna TRUE se non ne ha nessuno, FALSE altrimenti.
@@ -167,7 +219,7 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
  * @return     int: TRUE se il PCB non ha figli, FALSE altrimenti.
  */
 int emptyChild(pcb_t *p) {
-    return(list_empty(&p->p_child));
+    return list_empty(&p->p_child);
 }
 
 /**
@@ -180,8 +232,8 @@ int emptyChild(pcb_t *p) {
  * @return     void
  */
 void insertChild(pcb_t *prnt, pcb_t *p) {
+    p -> p_parent = prnt;
     list_add_tail(&p->p_sib, &prnt->p_child);
-    p->p_parent = prnt;
 }
 
 /**
@@ -216,15 +268,10 @@ pcb_t *removeChild(pcb_t *p) {
  * @return     pcb_t *: puntatore al PCB del figlio rimosso, NULL se p non ha genitore.
  */
 pcb_t *outChild(pcb_t *p) {
-    if(p->p_parent == NULL) return NULL;
-    else{
-        pcb_t *track;
-        list_for_each_entry(track, &p->p_parent->p_child, p_sib){
-            if(track == p){
-                list_del(&track->p_sib);
-                return p;
-            }
-        }
-        return NULL;
-    }
+	if( p->p_parent == NULL) return NULL;
+	else{
+        p->p_parent = NULL;
+		list_del(&p->p_sib);
+		return p;
+	}
 }
