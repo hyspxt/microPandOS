@@ -3,6 +3,8 @@
 
 /* -- NECESSARY LIBRARIES -- */
 #include "/usr/include/umps3/umps/libumps.h"
+#include "/usr/include/umps3/umps/arch.h"
+#include "/usr/include/umps3/umps/const.h"
 #include "../../phase1/headers/pcb.h"
 #include "../../phase1/headers/msg.h"
 
@@ -32,6 +34,8 @@ void uTLB_RefillHandler();
 void SSILoop();
 unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
+void terminateProcess(pcb_PTR);
+void deviceRequest(pcb_PTR, memaddr);
 
 /* exception module*/
 void exceptionHandler();
