@@ -8,16 +8,17 @@
  * @param payload the message to be sent
  * @return int
  */
-int send(unsigned int dest, unsigned int payload)
+int send(unsigned int sender, unsigned int dest, unsigned int payload)
 {
     msg_PTR msg = allocMsg();
     if (msg == NULL)
         return MSGNOGOOD;
 
     /* parameter comes in memory address form, so we need to do a casting */
+    pcb_PTR senderptr = (pcb_PTR)sender;
     pcb_PTR destptr = (pcb_PTR)dest;
 
-    msg->m_sender = current_process;
+    msg->m_sender = senderptr;
     msg->m_payload = payload;
 
     if (searchProcQ(&pcbFree_h, destptr) == NULL)
@@ -106,7 +107,7 @@ void syscallHandler(state_t *excState)
         case SENDMESSAGE:
             unsigned int dest = excState->reg_a1;
 
-            excState->reg_v0 = send(dest, payload);
+            excState->reg_v0 = send((unsigned int) current_process, dest, payload);
             break;
         case RECEIVEMESSAGE:
             unsigned int sender = excState->reg_a1;
@@ -160,7 +161,7 @@ void exceptionHandler()
     if (excCode == IOINTERRUPTS)
     {
         /* ExcCode = 0 it means interrupts and we pass the code  */
-        // interruptHandler(); // TODO implement interruptHandler in interrupt.c module
+        interruptHandler(EXCEPTION_STATE, cause); // TODO implement interruptHandler in interrupt.c module
     }
     else if (excCode > IOINTERRUPTS && excCode <= TLBINVLDS) /* ExcCode is between 1 and 3 */
     {

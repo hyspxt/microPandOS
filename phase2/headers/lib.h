@@ -26,6 +26,8 @@ extern struct list_head pseudoClockQueue;
 
 extern struct list_head pcbFree_h;
 
+extern pcb_PTR ssi_pcb, new_pcb;
+
 
 /* -- FUNCTIONS PROTOTYPE -- */
 /* nucleus module */
@@ -45,10 +47,14 @@ unsigned int getProcessID(pcb_PTR, pcb_PTR);
 /* exception module*/
 void exceptionHandler();
 void syscallHandler(state_t *);
-int send(unsigned int, unsigned int);
+int send(unsigned int, unsigned int, unsigned int);
 int recv(unsigned int, unsigned int);
-void interruptHandler(state_t *, unsigned int);
 void passUpOrDie(state_t *, unsigned int);
+
+/* interrupt module */
+void interruptHandler(state_t *, unsigned int);
+void PLTHandler(state_t *);
+void intervalTimerHandler(state_t *);
 
 /* scheduler module */
 void scheduler();

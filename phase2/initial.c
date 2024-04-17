@@ -10,7 +10,7 @@ struct list_head readyQueue;
 struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue, blockedTerminalTransmQueue, blockedTerminalRecvQueue;
 struct list_head pseudoClockQueue;
 
-pcb_PTR ssi_pcb, new_pcb;;
+pcb_PTR ssi_pcb, new_pcb;
 extern void test();
 
 void uTLB_RefillHandler()

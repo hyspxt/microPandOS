@@ -237,7 +237,10 @@ void SSILoop()
 		unsigned int senderAddr, result;
 		unsigned int payload;
 
-		senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0); // TODO keep an eye on this casting
+		senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0); 
+		// TODO for some strange reasons, it is blocking here
+
+
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
 		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
