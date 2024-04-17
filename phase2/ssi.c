@@ -60,34 +60,39 @@ void terminateProcess(pcb_PTR sender)
  */
 void deviceRequest(pcb_PTR sender, memaddr addr)
 {
-	/* We need to distinguish betweeen terminal and not-terminal devices, that are transm and recv 
-	so, according to uMPS3 - Principles of Operation, each device is identified by the interrupt line 
+	/* We need to distinguish betweeen terminal and not-terminal devices, that are transm and recv
+	so, according to uMPS3 - Principles of Operation, each device is identified by the interrupt line
 	it is attached to and its device number, an integer in the range 0-7. */
-	for (int deviceLine = 0; deviceLine < DEVPERINT; deviceLine++){
+	for (int deviceLine = 0; deviceLine < DEVPERINT; deviceLine++)
+	{
 
 		/* DEV_REG_ADDR(..) is a macro defined in arch.h that return the adress of the register of the device, using
-		its type and its identifier. MAX 8 instances supported by default. 
+		its type and its identifier. MAX 8 instances supported by default.
 		Terminal devices are identified by the IL_TERMINAL constant, that is 7. */
 		termreg_t *termreg = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, deviceLine);
-		if((memaddr) &termreg->transm_command == addr) {
+		if ((memaddr)&termreg->transm_command == addr)
+		{
 			outProcQ(&readyQueue, sender);
 			insertProcQ(&blockedTerminalTransmQueue, sender);
 		}
-		else if ((memaddr) &termreg->recv_command == addr) {
+		else if ((memaddr)&termreg->recv_command == addr)
+		{
 			outProcQ(&readyQueue, sender);
 			insertProcQ(&blockedTerminalRecvQueue, sender);
 		}
 		return;
 	}
 
-	/* If the device is not a terminal device, then it is a disk, flash, ethernet or printer device 
-	so, we iter on those basing on their identifiers. 
+	/* If the device is not a terminal device, then it is a disk, flash, ethernet or printer device
+	so, we iter on those basing on their identifiers.
 	According to uMPS3 - Principles of Operation p.29 devices have interrupts pending on interrupt lines 3-7.
 	That means that when bit i in word j is set to one, then device i attached to interrupt line j + 3 has a pending interrupt. */
-	for (int iter_dev = 3; iter_dev < IL_TERMINAL; iter_dev++){
-		for (int deviceLine = 0; deviceLine < DEVPERINT; deviceLine++){
+	for (int iter_dev = 3; iter_dev < IL_TERMINAL; iter_dev++)
+	{
+		for (int deviceLine = 0; deviceLine < DEVPERINT; deviceLine++)
+		{
 			dtpreg_t *dtpreg = (dtpreg_t *)DEV_REG_ADDR(iter_dev, deviceLine);
-			if ((memaddr) &dtpreg->command == addr)
+			if ((memaddr)&dtpreg->command == addr)
 			{
 				outProcQ(&readyQueue, sender);
 				switch (iter_dev)
@@ -109,7 +114,96 @@ void deviceRequest(pcb_PTR sender, memaddr addr)
 			}
 		}
 	}
+}
 
+/**
+ * @brief Returns the TOD (Time Of Day) clock value.
+ *
+ * @param sender the process that requested the service
+ * @return unsigned int the CPU time of the process
+ */
+unsigned int getTOD()
+{
+	unsigned int TOD_LOAD;
+	return (STCK(TOD_LOAD));
+}
+
+/**
+ * @brief Allow the sender to get back the accumulated processor time used by the sender process.
+ * 		  Hence, the nucleus records in sender->p_time the amount of processor time used by each process.
+ *
+ * @param sender the process that requested the service
+ * @return unsigned int the CPU time of the process
+ */
+unsigned int getCPUTime(pcb_PTR sender)
+{
+	return (sender->p_time);
+}
+
+/**
+ * @brief Update the CPU time of the process that requested the service.
+ * 		  Start is called when the process is dispatched, while updateCPUTime is called when the process is preempted.
+ *
+ * @param sender the process that requested the service
+ * @return void
+ */
+void updateCPUTime(pcb_PTR sender)
+{
+	unsigned int endTOD = getTOD();
+	sender->p_time += endTOD - startTOD;
+	startTOD = endTOD;
+}
+
+/**
+ * @brief Set the Processor Local Timer described at p.22 of uMPS3 - Principles of Operation.
+ *
+ * @param time the time to set the timer
+ * @return void
+ */
+void setPLT(unsigned int time)
+{
+	setTIMER(time * TIMESCALEADDR);
+}
+
+/**
+ * @brief Allow the sender to suspend its execution until the next pseudo-clock tick.
+ * 		  The pseudo-clock is a software clock that generates a clock interrupt every 100 milliseconds (PSECOND).
+ *
+ *
+ * @param sender the process that requested the service
+ * @return unsigned int the CPU time of the process
+ */
+void wait4Clock(pcb_PTR sender)
+{
+	insertProcQ(&pseudoClockQueue, sender);
+	softBlockCount++;
+}
+
+/**
+ * @brief Allow the sender to get to obtain the process Support Structure.
+ * 		  The support structure is a data structure that contains the information needed by the SSI to perform the service requested by the process.
+ *
+ * @param sender the process that requested the service
+ * @return void
+ */
+unsigned int getSupportData(pcb_PTR sender)
+{
+	/* The support structure is a data structure that contains the information needed by the SSI to perform the service requested by the process. */
+	return (unsigned int)sender->p_supportStruct;
+}
+
+/**
+ * @brief Allow the sender to get the process ID of the process that requested the service.
+ * 		  If arg is 0 return the sender's pid, or otherwise the sender's parent pid.
+ * @param sender the process that requested the service
+ * @return unsigned int the process ID
+ */
+unsigned int getProcessID(pcb_PTR sender, pcb_PTR arg)
+{
+	if (arg == NULL)
+		return sender->p_pid;
+	else
+		return sender->p_parent->p_pid;
 }
 
 /**
@@ -125,7 +219,7 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 	/* if a process request the DOIO service, it must be blocked on the correct device */
 	softBlockCount++;
 	deviceRequest(sender, (memaddr)doioPTR->commandAddr); // save the waiting pcb in the correct device queue
-	*(doioPTR->commandAddr) = doioPTR->commandValue; 
+	*(doioPTR->commandAddr) = doioPTR->commandValue;
 }
 
 /**
@@ -179,12 +273,24 @@ unsigned int SSIRequest(pcb_PTR sender, ssi_payload_PTR payload)
 			terminateProcess(sender);
 		}
 		else
-		{
 			terminateProcess(payload->arg);
-		}
 		break;
 	case DOIO:
-		/* TODO implement the IO service */
+		doio(payload->arg, sender);
+		res = NOPROC;
+		break;
+	case GETTIME:
+		res = getCPUTime(sender);
+		break;
+	case CLOCKWAIT:
+		wait4Clock(sender);
+		res = NOPROC;
+		break;
+	case GETSUPPORTPTR:
+		res = getSupportData(sender);
+		break;
+	case GETPROCESSID:
+		res = getProcessID(sender, payload->arg);
 		break;
 	}
 	return res;

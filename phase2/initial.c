@@ -2,6 +2,7 @@
 
 pcb_PTR current_process;
 unsigned int processCount, softBlockCount;
+unsigned int startTOD;
 
 /* Queue of PCBs that are in READY state. It is a tail pointer. */
 struct list_head readyQueue;

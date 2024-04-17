@@ -9,12 +9,14 @@
  */
 void scheduler()
 {
+    
     if (!emptyProcQ(&readyQueue))
     {
         /* The ready queue is not empty */
         /* dispatch and sets another PCB in the readyQueue to currentProcess. */
         current_process = removeProcQ(&readyQueue);
-        setTIMER(TIMESLICE);
+        setPLT(TIMESLICE);
+        startTOD = getTOD();
         LDST(&(current_process->p_s));
     }
     else
@@ -30,7 +32,7 @@ void scheduler()
             /* Enter Wait State, waiting for a device interrupts*/
             current_process = NULL;
             /* should enable interrupts and disable plt */
-            setSTATUS(ALLOFF | IMON | IEPON);
+            setSTATUS(ALLOFF | IMON | IECON);
             WAIT();
         }
     }

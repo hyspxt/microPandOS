@@ -14,6 +14,7 @@
 /* -- VARIABLES -- */
 extern unsigned int processCount, softBlockCount;
 extern pcb_PTR current_process;
+extern unsigned int startTOD;
 
 extern struct list_head readyQueue;
 
@@ -21,9 +22,10 @@ extern struct list_head readyQueue;
 extern struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue, blockedTerminalTransmQueue,blockedTerminalRecvQueue;
 extern struct list_head pseudoClockQueue;
 
-extern struct list_head waitingMsgQueue;
+// extern struct list_head waitingMsgQueue;
 
 extern struct list_head pcbFree_h;
+
 
 /* -- FUNCTIONS PROTOTYPE -- */
 /* nucleus module */
@@ -36,16 +38,25 @@ unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
 void terminateProcess(pcb_PTR);
 void deviceRequest(pcb_PTR, memaddr);
+void wait4Clock(pcb_PTR);
+unsigned int getSupportData(pcb_PTR);
+unsigned int getProcessID(pcb_PTR, pcb_PTR);
 
 /* exception module*/
 void exceptionHandler();
-void syscallHandler();
+void syscallHandler(state_t *);
 int send(unsigned int, unsigned int);
 int recv(unsigned int, unsigned int);
-void interruptHandler();
-void progTrapHandler();
+void interruptHandler(state_t *, unsigned int);
+void passUpOrDie(state_t *, unsigned int);
 
 /* scheduler module */
 void scheduler();
+
+/* timers related functions */
+void setPLT(unsigned int);
+unsigned int getCPUTime(pcb_PTR);
+unsigned int getTOD();
+void updateCPUTime(pcb_PTR);
 
 #endif
