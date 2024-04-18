@@ -10,8 +10,10 @@ struct list_head readyQueue;
 struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue, blockedTerminalTransmQueue, blockedTerminalRecvQueue;
 struct list_head pseudoClockQueue;
 
+unsigned int pidCount;
+
 pcb_PTR ssi_pcb, new_pcb;
-extern void test();
+
 
 void uTLB_RefillHandler()
 {
@@ -62,6 +64,7 @@ int main()
     processCount = 0;
     softBlockCount = 0;
     current_process = NULL;
+    pidCount = 0;
 
     mkEmptyProcQ(&readyQueue);
     /* Blocked PCBs Queues */
@@ -79,30 +82,32 @@ int main()
     /* Load system-wide interval timer with 100000 ms */
     LDIT(PSECOND); 
 
-    /* Instantiate the first PCB, the SSI 
+    /* Instantiate the first PCB, the SSI with pid 1
          This one need to have interrupts enabled, kernel-mode on, the SP set to RAMTOP 
          and the PC set to the address of the SSI_function_entry_point */
     ssi_pcb = NULL;
     ssi_pcb = allocPcb();
     ssi_pcb->p_pid = 1;
+    pidCount++;
 
     /* IEc -> represents the CURRENT interrupt enable bit 
        KUc > represents the CURRENT state of Kernel/User mode
     It is important to mention that to setting up a new processor state, we should set 
     PREVIOUS bits and not CURRENT ones (so basically, IEp and KUp counterparts).
     */
-    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON; // kernel mode is by default when KUc = 0
+    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // kernel mode is by default when KUc = 0
     RAMTOP(ssi_pcb->p_s.reg_sp);
     ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) SSILoop;
     insertProcQ(&readyQueue, ssi_pcb);
     processCount++;
     
-    /* Instantiate the test PCB,
+    /* Instantiate the test PCB, with pid 2
         This one need to have interrupts enabled, processor local-timer enabled, the SP set to RAMTOP 
         and the PC set to the address of test */
     new_pcb = NULL;
     new_pcb = allocPcb();
     new_pcb->p_pid = 2;
+    pidCount = 3;
     new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
     RAMTOP(new_pcb->p_s.reg_sp);
     new_pcb->p_s.reg_sp -= 2 * PAGESIZE; // FRAMESIZE according to specs??

@@ -25,8 +25,9 @@ void scheduler()
         /* Check with process counters if any kind of deadlock situation is happening */
         if (processCount == 1)
             HALT(); /* that means only SSI_pcb is active. */
-        else if (processCount > 1 && softBlockCount == 0)
+        else if (processCount > 1 && softBlockCount == 0){
             PANIC(); /* Deadlock situation, invoke PANIC BIOS service/instruction. */
+        }
         else if (processCount > 1 && softBlockCount > 0)
         {
             /* Enter Wait State, waiting for a device interrupts*/

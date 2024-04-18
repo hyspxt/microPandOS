@@ -1,5 +1,16 @@
 #include "./headers/lib.h"
 
+unsigned int searchPCB(pcb_PTR p, struct list_head *list)
+{
+    pcb_t *tmp;
+    list_for_each_entry(tmp, list, p_list)
+    {
+        if (p == tmp)
+            return 1;
+    }
+    return 0;
+}
+
 /**
  * @brief Sends a message to a PCB identified by dest address. If the process is not in the system, the message is not sent.
  *        If the process is waiting for a message, it is awakened and put in the ready queue.
@@ -21,9 +32,10 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload)
     msg->m_sender = senderptr;
     msg->m_payload = payload;
 
-    if (searchProcQ(&pcbFree_h, destptr) == NULL)
+    // ENTRA QUA DENTRO
+    if (searchPCB(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
-    else if (!(searchProcQ(&readyQueue, destptr) != NULL || (destptr == current_process)))
+    else if (!(searchPCB(destptr, &readyQueue) || (destptr == current_process)))
     {
         /* if dest was waiting for a message, we awaken it*/
         insertProcQ(&readyQueue, destptr);
@@ -43,9 +55,7 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload)
 int recv(unsigned int sender, unsigned int payload)
 {
 
-
     // TODOOO might check on this, it could be incorrect
-
 
     /* parameter comes in memory address form, so we need to do a casting */
     pcb_PTR senderptr = (pcb_PTR)sender;
@@ -65,12 +75,15 @@ int recv(unsigned int sender, unsigned int payload)
     }
     else
     {
-        if (payload != (unsigned int)NULL)
-            *&payload = msg->m_payload;
+        unsigned int result = (memaddr)msg->m_sender;
+        if (msg->m_payload != (unsigned int)NULL)
+        {
+            EXCEPTION_STATE->reg_a2 = msg->m_payload;
+        }
+        freeMsg(msg);
+        return (result); // return the sender's identifier in v0 register
     }
-    unsigned int result = (unsigned int)msg->m_sender;
-    freeMsg(msg);
-    return (result); // return the sender's identifier in v0 register
+    return (memaddr)msg->m_sender;
 }
 
 /**
@@ -96,44 +109,47 @@ void syscallHandler(state_t *excState)
         excState->cause = ((excState->cause) & CLEAREXECCODE) | (PRIVINSTR << CAUSESHIFT);
         passUpOrDie(excState, GENERALEXCEPT);
     }
-    else if (excState->reg_a0 >= 1)
-        passUpOrDie(excState, GENERALEXCEPT);
     else
     {
         unsigned int syscallCode = excState->reg_a0;
-        unsigned int payload = excState->reg_a2;
         switch (syscallCode)
         {
         case SENDMESSAGE:
-            unsigned int dest = excState->reg_a1;
-
-            excState->reg_v0 = send((unsigned int) current_process, dest, payload);
+            excState->reg_v0 = send((memaddr)current_process, excState->reg_a1, excState->reg_a2);
+            excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
+            LDST(excState);
             break;
         case RECEIVEMESSAGE:
-            unsigned int sender = excState->reg_a1;
-
-            excState->reg_v0 = recv(sender, payload);
+            excState->reg_v0 = recv(excState->reg_a1, excState->reg_a2);
+            excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
+            LDST(excState);
+            break;
+        default:
+            if (syscallCode >= 1)
+            {
+                passUpOrDie(excState, GENERALEXCEPT);
+            }
             break;
         }
-
-        excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
-        LDST(excState);
     }
 }
 
 void passUpOrDie(state_t *excState, unsigned int excType)
 {
-    if (current_process->p_supportStruct == NULL)
+    if (current_process != NULL)
     {
-        terminateProcess(current_process);
-        scheduler();
-    }
-    else
-    {
-        stateCpy(excState, &current_process->p_supportStruct->sup_exceptState[excType]);
-        LDCXT(current_process->p_supportStruct->sup_exceptContext[excType].stackPtr,
-              current_process->p_supportStruct->sup_exceptContext[excType].status,
-              current_process->p_supportStruct->sup_exceptContext[excType].pc);
+        if (current_process->p_supportStruct == NULL)
+        {
+            terminateProcess(current_process);
+            scheduler();
+        }
+        else
+        {
+            stateCpy(excState, &current_process->p_supportStruct->sup_exceptState[excType]);
+            LDCXT(current_process->p_supportStruct->sup_exceptContext[excType].stackPtr,
+                  current_process->p_supportStruct->sup_exceptContext[excType].status,
+                  current_process->p_supportStruct->sup_exceptContext[excType].pc);
+        }
     }
 }
 
@@ -158,19 +174,48 @@ void exceptionHandler()
     Then, the right shift (>>) will move the bits to the right, in position 0-4, so that the exception code will be in the least significant bits. */
     unsigned int excCode = (cause & GETEXECCODE) >> CAUSESHIFT;
 
-    if (excCode == IOINTERRUPTS)
+
+    // TODOOOOOOOOOOO c'é da capire perché qui dentro passa la passUpOrDie e quale passa
+
+    switch (excCode)
     {
-        /* ExcCode = 0 it means interrupts and we pass the code  */
-        interruptHandler(EXCEPTION_STATE, cause); // TODO implement interruptHandler in interrupt.c module
-    }
-    else if (excCode > IOINTERRUPTS && excCode <= TLBINVLDS) /* ExcCode is between 1 and 3 */
-    {
+    case IOINTERRUPTS:
+        /* TLB exception */
+        interruptHandler(EXCEPTION_STATE, cause);
+        break;
+    case 1 ... TLBINVLDS:
+        /* Program Trap */
         passUpOrDie(EXCEPTION_STATE, PGFAULTEXCEPT);
-    }
-    else if (excCode == SYSEXCEPTION) /* ExcCode = 8 */
+        break;
+    case SYSEXCEPTION:
+        /* System Call */
         syscallHandler(EXCEPTION_STATE);
-    else if (excCode <= 12) /* ExCode in 4-9 and 9-12 means program trap*/
+        break;
+    case 4 ... 7:
         passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
-    else /* ExcCode is not in the range [0...12] */
+        break;
+    case BREAKEXCEPTION ... 12:
+        passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
+        break;
+    default:
         PANIC();
+    }
+
+    // if (excCode == IOINTERRUPTS)
+    // {
+    //     /* ExcCode = 0 it means interrupts and we pass the code  */
+    //     interruptHandler(EXCEPTION_STATE, cause); // TODO implement interruptHandler in interrupt.c module
+    // }
+    // else if (excCode > IOINTERRUPTS && excCode <= TLBINVLDS) /* ExcCode is between 1 and 3 */
+    // {
+    //     passUpOrDie(EXCEPTION_STATE, PGFAULTEXCEPT);
+    // }
+    // else if (excCode == SYSEXCEPTION) /* ExcCode = 8 */
+    //     syscallHandler(EXCEPTION_STATE);
+    // else if (excCode <= 12) /* ExCode in 4-9 and 9-12 means program trap*/
+    //     passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
+    // else
+    // { /* ExcCode is not in the range [0...12] */
+    //     PANIC();
+    // }
 }

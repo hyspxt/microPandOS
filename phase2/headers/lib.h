@@ -5,6 +5,8 @@
 #include "/usr/include/umps3/umps/libumps.h"
 #include "/usr/include/umps3/umps/arch.h"
 #include "/usr/include/umps3/umps/const.h"
+#include "/usr/include/umps3/umps/cp0.h"
+
 #include "../../phase1/headers/pcb.h"
 #include "../../phase1/headers/msg.h"
 
@@ -15,6 +17,7 @@
 extern unsigned int processCount, softBlockCount;
 extern pcb_PTR current_process;
 extern unsigned int startTOD;
+extern unsigned int pidCount;
 
 extern struct list_head readyQueue;
 
@@ -27,6 +30,7 @@ extern struct list_head pseudoClockQueue;
 extern struct list_head pcbFree_h;
 
 extern pcb_PTR ssi_pcb, new_pcb;
+extern void test();
 
 
 /* -- FUNCTIONS PROTOTYPE -- */
@@ -64,5 +68,8 @@ void setPLT(unsigned int);
 unsigned int getCPUTime(pcb_PTR);
 unsigned int getTOD();
 void updateCPUTime(pcb_PTR);
+
+/* miscellaneous  */
+unsigned int searchPCB(pcb_PTR, struct list_head *);
 
 #endif

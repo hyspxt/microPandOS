@@ -19,9 +19,12 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 	else
 	{
 		/* There is at least one PCB available */
+		new_pcb->p_supportStruct = sup->support;
+		new_pcb->p_time = 0;
+		new_pcb->p_pid = pidCount++;;
 		processCount++;
 		stateCpy(sup->state, &new_pcb->p_s);
-		new_pcb->p_supportStruct = sup->support;
+		
 		insertProcQ(&readyQueue, new_pcb);
 		insertChild(parent, new_pcb);
 		return (unsigned int)new_pcb;
@@ -45,10 +48,22 @@ void terminateProcess(pcb_PTR sender)
 		{
 			terminateProcess(removeChild(sender));
 		}
-		processCount--;
-		outChild(sender);
-		freePcb(sender);
 	}
+	processCount--;
+
+	if (outProcQ(&blockedTerminalTransmQueue, sender) != NULL ||
+		outProcQ(&blockedTerminalRecvQueue, sender) != NULL ||
+		outProcQ(&blockedDiskQueue, sender) != NULL ||
+		outProcQ(&blockedFlashQueue, sender) != NULL ||
+		outProcQ(&blockedEthernetQueue, sender) != NULL ||
+		outProcQ(&blockedPrinterQueue, sender) != NULL ||
+		outProcQ(&pseudoClockQueue, sender) != NULL)
+	{
+		softBlockCount--;
+	}
+
+	outChild(sender);
+	freePcb(sender);
 }
 
 /**
@@ -237,9 +252,8 @@ void SSILoop()
 		unsigned int senderAddr, result;
 		unsigned int payload;
 
-		senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0); 
+		senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
 		// TODO for some strange reasons, it is blocking here
-
 
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
