@@ -40,7 +40,7 @@ void uTLB_RefillHandler();
 
 /* ssi module*/
 void SSILoop();
-unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
+unsigned int SSIRequest(pcb_PTR, ssi_payload_PTR);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
 void terminateProcess(pcb_PTR);
 void deviceRequest(pcb_PTR, memaddr);
@@ -51,8 +51,8 @@ unsigned int getProcessID(pcb_PTR, pcb_PTR);
 /* exception module*/
 void exceptionHandler();
 void syscallHandler(state_t *);
-int send(unsigned int, unsigned int, unsigned int);
-int recv(unsigned int, unsigned int);
+unsigned int send(unsigned int, unsigned int, unsigned int, state_t *);
+void recv(unsigned int, unsigned int, state_t *);
 void passUpOrDie(state_t *, unsigned int);
 
 /* interrupt module */

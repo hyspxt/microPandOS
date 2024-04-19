@@ -21,10 +21,11 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 		/* There is at least one PCB available */
 		new_pcb->p_supportStruct = sup->support;
 		new_pcb->p_time = 0;
-		new_pcb->p_pid = pidCount++;;
+		new_pcb->p_pid = pidCount++;
+		;
 		processCount++;
 		stateCpy(sup->state, &new_pcb->p_s);
-		
+
 		insertProcQ(&readyQueue, new_pcb);
 		insertChild(parent, new_pcb);
 		return (unsigned int)new_pcb;
@@ -257,7 +258,8 @@ void SSILoop()
 
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
-		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
+		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_PTR)payload);
+		// pretty sure that the problem is here ------------
 
 		if (result != NOPROC)
 		{
@@ -275,10 +277,9 @@ void SSILoop()
  */
 unsigned int SSIRequest(pcb_PTR sender, ssi_payload_PTR payload)
 {
-	unsigned int code, res = 0;
-	code = payload->service_code;
+	unsigned int res = 0;
 
-	switch (code)
+	switch (payload->service_code)
 	{
 	case CREATEPROCESS:
 		res = createProcess(payload->arg, sender);
@@ -308,6 +309,10 @@ unsigned int SSIRequest(pcb_PTR sender, ssi_payload_PTR payload)
 		break;
 	case GETPROCESSID:
 		res = getProcessID(sender, payload->arg);
+		break;
+	default:
+		res = MSGNOGOOD;
+		terminateProcess(sender);
 		break;
 	}
 	return res;

@@ -19,7 +19,7 @@ unsigned int searchPCB(pcb_PTR p, struct list_head *list)
  * @param payload the message to be sent
  * @return int
  */
-int send(unsigned int sender, unsigned int dest, unsigned int payload)
+unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *excState)
 {
     msg_PTR msg = allocMsg();
     if (msg == NULL)
@@ -52,7 +52,7 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload)
  * @param payload the message to be received
  * @return int
  */
-int recv(unsigned int sender, unsigned int payload)
+void recv(unsigned int sender, unsigned int payload, state_t *excState)
 {
 
     // TODOOO might check on this, it could be incorrect
@@ -69,21 +69,18 @@ int recv(unsigned int sender, unsigned int payload)
     if (msg == NULL) /* so there aren't any message in the inbox, we should put it in waiting state */
     {
         /* This becomes a blocking RECV*/
-        stateCpy(EXCEPTION_STATE, &current_process->p_s);
+        stateCpy(excState, &current_process->p_s);
         updateCPUTime(current_process);
         scheduler();
     }
     else
     {
-        unsigned int result = (memaddr)msg->m_sender;
+        excState->reg_v0 = (memaddr) msg->m_sender; 
         if (msg->m_payload != (unsigned int)NULL)
-        {
-            EXCEPTION_STATE->reg_a2 = msg->m_payload;
-        }
-        freeMsg(msg);
-        return (result); // return the sender's identifier in v0 register
+            excState->reg_a2 = msg->m_payload;
+        freeMsg(msg);       
+        // unsigned int result = (memaddr)msg->m_sender; 
     }
-    return (memaddr)msg->m_sender;
 }
 
 /**
@@ -115,12 +112,12 @@ void syscallHandler(state_t *excState)
         switch (syscallCode)
         {
         case SENDMESSAGE:
-            excState->reg_v0 = send((memaddr)current_process, excState->reg_a1, excState->reg_a2);
+            excState->reg_v0 = send((memaddr)current_process, excState->reg_a1, excState->reg_a2, excState);
             excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
             LDST(excState);
             break;
         case RECEIVEMESSAGE:
-            excState->reg_v0 = recv(excState->reg_a1, excState->reg_a2);
+            recv(excState->reg_a1, excState->reg_a2, excState);
             excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
             LDST(excState);
             break;
@@ -174,7 +171,6 @@ void exceptionHandler()
     Then, the right shift (>>) will move the bits to the right, in position 0-4, so that the exception code will be in the least significant bits. */
     unsigned int excCode = (cause & GETEXECCODE) >> CAUSESHIFT;
 
-
     // TODOOOOOOOOOOO c'é da capire perché qui dentro passa la passUpOrDie e quale passa
 
     switch (excCode)
@@ -187,12 +183,13 @@ void exceptionHandler()
         /* Program Trap */
         passUpOrDie(EXCEPTION_STATE, PGFAULTEXCEPT);
         break;
+    case 4 ... 7:
+        // entra qui -----------
+        passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
+        break;
     case SYSEXCEPTION:
         /* System Call */
         syscallHandler(EXCEPTION_STATE);
-        break;
-    case 4 ... 7:
-        passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
         break;
     case BREAKEXCEPTION ... 12:
         passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);

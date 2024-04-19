@@ -34,7 +34,7 @@ void intervalTimerHandler(state_t *excState)
     {
         softBlockCount--;
         /* sender is not needed to be current_process, in this case is ssi_pcb TODO*/
-        send((unsigned int)ssi_pcb, (unsigned int)awknPcb, 0);
+        send((unsigned int)ssi_pcb, (unsigned int)awknPcb, 0, excState);
         insertProcQ(&readyQueue, awknPcb);
     }
 
