@@ -10,6 +10,10 @@
 #include "../../phase1/headers/pcb.h"
 #include "../../phase1/headers/msg.h"
 
+extern void klog_print(char *);
+extern void klog_print_hex(unsigned int);   
+extern void klog_print_dec(unsigned int);
+
 /* -- MACROS -- */
 #define EXCEPTION_STATE ((state_t * )BIOSDATAPAGE)
 
@@ -36,11 +40,12 @@ extern void test();
 /* -- FUNCTIONS PROTOTYPE -- */
 /* nucleus module */
 void stateCpy(state_t *, state_t *);
+void stateCPY4debug(state_t *, state_t *);
 void uTLB_RefillHandler();
 
 /* ssi module*/
 void SSILoop();
-unsigned int SSIRequest(pcb_PTR, ssi_payload_PTR);
+unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
 void terminateProcess(pcb_PTR);
 void deviceRequest(pcb_PTR, memaddr);

@@ -40,6 +40,38 @@ void stateCpy(state_t *src, state_t *dest){
 		dest->gpr[i] = src->gpr[i];
 }
 
+void stateCPY4debug(state_t *src, state_t *dest){
+    klog_print("Copying...\n");
+
+    if (dest != NULL)
+        klog_print("dest is not NULL\n");
+
+    if (src != NULL)
+        klog_print("src is not NULL!\n");
+
+    if (dest->status == 0)
+        klog_print("dest->status is not NULL\n");
+    if (src->status == 0)
+        klog_print("src->status is not NULL\n");
+
+    dest->status = src->status;
+    klog_print("1...\n");
+	dest->pc_epc = src->pc_epc;
+    klog_print("2...\n");
+    dest->cause = src->cause;
+    klog_print("3...\n");
+    dest->entry_hi = src->entry_hi;
+    klog_print("4...\n");
+    dest->hi = src->hi;
+    klog_print("5...\n");
+	dest->lo = src->lo;
+    klog_print("6...\n");
+	for(int i=0; i<STATE_GPR_LEN; i++)
+		dest->gpr[i] = src->gpr[i];
+    klog_print("Finish all ok\n");
+}
+
+
 /**
  * @brief This module contains the microPandOS entry point, that is the Nucleus initialization.
  *        after the initialization, the Nucleus will call the scheduler.
@@ -107,7 +139,7 @@ int main()
     new_pcb = NULL;
     new_pcb = allocPcb();
     new_pcb->p_pid = 2;
-    pidCount = 3;
+    pidCount = 2;
     new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
     RAMTOP(new_pcb->p_s.reg_sp);
     new_pcb->p_s.reg_sp -= 2 * PAGESIZE; // FRAMESIZE according to specs??

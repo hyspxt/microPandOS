@@ -29,18 +29,27 @@ unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, 
     pcb_PTR senderptr = (pcb_PTR)sender;
     pcb_PTR destptr = (pcb_PTR)dest;
 
+    klog_print("I'm the process \n");
+    klog_print_hex((int)senderptr);
+    klog_print("I'm sending to \n");
+    klog_print_hex((int)destptr);
+
     msg->m_sender = senderptr;
-    msg->m_payload = payload;
+    if (payload != (unsigned int)NULL)
+        msg->m_payload = payload;
 
     // ENTRA QUA DENTRO
     if (searchPCB(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
     else if (!(searchPCB(destptr, &readyQueue) || (destptr == current_process)))
     {
+        // LA LISTA É PIENA????
         /* if dest was waiting for a message, we awaken it*/
         insertProcQ(&readyQueue, destptr);
     }
     insertMessage(&destptr->msg_inbox, msg);
+    excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
+    LDST(excState);
     return 0;
 }
 
@@ -68,6 +77,7 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
 
     if (msg == NULL) /* so there aren't any message in the inbox, we should put it in waiting state */
     {
+        klog_print("waiting uwu \n");
         /* This becomes a blocking RECV*/
         stateCpy(excState, &current_process->p_s);
         updateCPUTime(current_process);
@@ -75,11 +85,18 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
     }
     else
     {
-        excState->reg_v0 = (memaddr) msg->m_sender; 
+        klog_print("Found a msg from \n");
+        klog_print_hex((int)msg->m_sender);
+
+        excState->reg_v0 = (memaddr)msg->m_sender;
         if (msg->m_payload != (unsigned int)NULL)
-            excState->reg_a2 = msg->m_payload;
-        freeMsg(msg);       
-        // unsigned int result = (memaddr)msg->m_sender; 
+        {
+            payload = msg->m_payload;
+        }
+        freeMsg(msg);
+        // unsigned int result = (memaddr)msg->m_sender;
+        excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
+        LDST(excState);
     }
 }
 
@@ -113,13 +130,9 @@ void syscallHandler(state_t *excState)
         {
         case SENDMESSAGE:
             excState->reg_v0 = send((memaddr)current_process, excState->reg_a1, excState->reg_a2, excState);
-            excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
-            LDST(excState);
             break;
         case RECEIVEMESSAGE:
             recv(excState->reg_a1, excState->reg_a2, excState);
-            excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
-            LDST(excState);
             break;
         default:
             if (syscallCode >= 1)
@@ -160,7 +173,7 @@ void passUpOrDie(state_t *excState, unsigned int excType)
 void exceptionHandler()
 {
 
-    // state_t *excState = (state_t *)BIOSDATAPAGE;
+    // state_t *excState = (state_t *)BIOSDATAPAGE;1
     /* When the exception is raised, this function will be called (new stack), TLB-refill events excluded.
     We can distinguish the type of exception by reading the cause in the processor state at the time of the exception.
     In particular, that value will be at the start of BIOS data page. In advance, we assume that PCB is already set to kernel mode and have interrupts disabled. */

@@ -9,27 +9,21 @@
  */
 unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 {
-	pcb_PTR new_pcb = allocPcb();
-	if (new_pcb == NULL)
-	{
-		/* There aren't any PCBs available */
-		// sender->p_s.reg_v0 = NOPROC;
-		return NOPROC;
-	}
-	else
-	{
-		/* There is at least one PCB available */
-		new_pcb->p_supportStruct = sup->support;
-		new_pcb->p_time = 0;
-		new_pcb->p_pid = pidCount++;
-		;
-		processCount++;
-		stateCpy(sup->state, &new_pcb->p_s);
+    pcb_PTR child = allocPcb();
 
-		insertProcQ(&readyQueue, new_pcb);
-		insertChild(parent, new_pcb);
-		return (unsigned int)new_pcb;
-	}
+    child->p_pid = pidCount++;
+    child->p_time = 0;
+    child->p_supportStruct = sup->support;
+    stateCPY4debug(sup->state, &child->p_s);
+    
+    insertChild(parent, child);
+
+    //inserimento nella ready queue
+    insertProcQ(&readyQueue, child);
+
+    processCount++;
+    return (unsigned int)child;
+	
 }
 
 /**
@@ -258,12 +252,12 @@ void SSILoop()
 
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
-		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_PTR)payload);
+		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
 		// pretty sure that the problem is here ------------
 
 		if (result != NOPROC)
 		{
-			SYSCALL(SENDMESSAGE, senderAddr, result, 0);
+			SYSCALL(SENDMESSAGE, (memaddr)senderAddr, (unsigned int)result, 0);
 		}
 	}
 }
@@ -275,14 +269,35 @@ void SSILoop()
  * @param payload the payload of the message
  * @return unsigned int the result of the service
  */
-unsigned int SSIRequest(pcb_PTR sender, ssi_payload_PTR payload)
+unsigned int SSIRequest(pcb_PTR sender, ssi_payload_t *payload)
 {
 	unsigned int res = 0;
+	klog_print("payload addr: \n");
+	klog_print_hex((int)payload);
+
+	if (payload == NULL)
+		klog_print("Payload is NULL");
+	else klog_print("Payload is not NULL");
+	// if (payload->service_code == 1)
+	// 	klog_print("Payload arg is a CREATEPROCESS");
+	// else klog_print("Payload arg is not NULL");
+	// if (payload->service_code == 2)
+	// 	klog_print("Payload service code is a TERM PROCESS");
+
+	klog_print("payload service code \n:");
+	klog_print_dec(payload->service_code);
 
 	switch (payload->service_code)
 	{
 	case CREATEPROCESS:
-		res = createProcess(payload->arg, sender);
+		if (emptyProcQ(&pcbFree_h))
+		{
+			res = NOPROC;
+		}
+		else
+		{
+			res = (unsigned int) createProcess((ssi_create_process_PTR)payload->arg, sender);
+		}
 		break;
 	case TERMPROCESS:
 		if (payload->arg == NULL)
