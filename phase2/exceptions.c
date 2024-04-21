@@ -29,19 +29,13 @@ unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, 
     pcb_PTR senderptr = (pcb_PTR)sender;
     pcb_PTR destptr = (pcb_PTR)dest;
 
-    klog_print("I'm the process \n");
-    klog_print_hex((int)senderptr);
-    klog_print("I'm sending to \n");
-    klog_print_hex((int)destptr);
-
     msg->m_sender = senderptr;
-    if (payload != (unsigned int)NULL)
-        msg->m_payload = payload;
+    msg->m_payload = payload;
 
     // ENTRA QUA DENTRO
     if (searchPCB(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
-    else if (!(searchPCB(destptr, &readyQueue) || (destptr == current_process)))
+    else if (!(searchPCB(destptr, &readyQueue) || (destptr == current_process)))  // check this
     {
         // LA LISTA É PIENA????
         /* if dest was waiting for a message, we awaken it*/
@@ -61,7 +55,7 @@ unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, 
  * @param payload the message to be received
  * @return int
  */
-void recv(unsigned int sender, unsigned int payload, state_t *excState)
+void recv(unsigned int sender, unsigned int *payload, state_t *excState)
 {
 
     // TODOOO might check on this, it could be incorrect
@@ -77,24 +71,27 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
 
     if (msg == NULL) /* so there aren't any message in the inbox, we should put it in waiting state */
     {
-        klog_print("waiting uwu \n");
-        /* This becomes a blocking RECV*/
         stateCpy(excState, &current_process->p_s);
         updateCPUTime(current_process);
         scheduler();
     }
     else
     {
-        klog_print("Found a msg from \n");
-        klog_print_hex((int)msg->m_sender);
+        klog_print("\n Found a msg from \n");
+        klog_print_hex((memaddr)msg->m_sender);
 
         excState->reg_v0 = (memaddr)msg->m_sender;
         if (msg->m_payload != (unsigned int)NULL)
         {
-            payload = msg->m_payload;
+            klog_print("\n received something! \n");
+            payload = &msg->m_payload;
+            // klog_print_hex((unsigned int)&payload);
+            excState->reg_a2 = *(unsigned int *)payload;
+
+            // klog_print("\n maybe this \n");
+            // klog_print_hex(*(unsigned int *)payload); // this is correct
         }
         freeMsg(msg);
-        // unsigned int result = (memaddr)msg->m_sender;
         excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
         LDST(excState);
     }
@@ -132,7 +129,7 @@ void syscallHandler(state_t *excState)
             excState->reg_v0 = send((memaddr)current_process, excState->reg_a1, excState->reg_a2, excState);
             break;
         case RECEIVEMESSAGE:
-            recv(excState->reg_a1, excState->reg_a2, excState);
+            recv(excState->reg_a1, &excState->reg_a2, excState);
             break;
         default:
             if (syscallCode >= 1)
@@ -184,8 +181,6 @@ void exceptionHandler()
     Then, the right shift (>>) will move the bits to the right, in position 0-4, so that the exception code will be in the least significant bits. */
     unsigned int excCode = (cause & GETEXECCODE) >> CAUSESHIFT;
 
-    // TODOOOOOOOOOOO c'é da capire perché qui dentro passa la passUpOrDie e quale passa
-
     switch (excCode)
     {
     case IOINTERRUPTS:
@@ -210,22 +205,4 @@ void exceptionHandler()
     default:
         PANIC();
     }
-
-    // if (excCode == IOINTERRUPTS)
-    // {
-    //     /* ExcCode = 0 it means interrupts and we pass the code  */
-    //     interruptHandler(EXCEPTION_STATE, cause); // TODO implement interruptHandler in interrupt.c module
-    // }
-    // else if (excCode > IOINTERRUPTS && excCode <= TLBINVLDS) /* ExcCode is between 1 and 3 */
-    // {
-    //     passUpOrDie(EXCEPTION_STATE, PGFAULTEXCEPT);
-    // }
-    // else if (excCode == SYSEXCEPTION) /* ExcCode = 8 */
-    //     syscallHandler(EXCEPTION_STATE);
-    // else if (excCode <= 12) /* ExCode in 4-9 and 9-12 means program trap*/
-    //     passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
-    // else
-    // { /* ExcCode is not in the range [0...12] */
-    //     PANIC();
-    // }
 }

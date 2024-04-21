@@ -22,6 +22,8 @@
 #include "../headers/types.h"
 #include <umps/libumps.h>
 
+#include "./headers/lib.h"
+
 typedef unsigned int devregtr;
 
 /* hardware constants */
@@ -132,7 +134,7 @@ void print()
 
 void print_term0(char *s)
 {
-    SYSCALL(SENDMESSAGE, (unsigned int)print_pcb, (unsigned int)s, 0);
+    SYSCALL(SENDMESSAGE, (unsigned int)print_pcb, (unsigned int)s, 0); // crasha su questa send
     SYSCALL(RECEIVEMESSAGE, (unsigned int)print_pcb, 0, 0);
 }
 
@@ -167,8 +169,15 @@ pcb_t *create_process(state_t *s)
         .service_code = CREATEPROCESS,
         .arg = &ssi_create_process,
     };
+    klog_print("\n Payload memory address  1: \n");
+    klog_print_hex((unsigned int)&payload);
+    klog_print("\n P: \n");
+    klog_print_hex((unsigned int)&p);
+
+
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&p), 0);
+
     return p;
 }
 
@@ -200,6 +209,10 @@ void test()
     if ((int)print_pcb == NOPROC)
         PANIC();
 
+    
+    
+    klog_print("\n qui ci arrivo \n");
+    klog_print_hex((unsigned int) print_pcb);
     // test print process
     print_term0("Don't Panic.\n");
 
