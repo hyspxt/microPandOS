@@ -32,10 +32,13 @@ unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, 
     msg->m_sender = senderptr;
     msg->m_payload = payload;
 
+    if (searchPCB(destptr, &readyQueue))
+        klog_print("\n Found the dest in readyQueue \n");
+
     // ENTRA QUA DENTRO
     if (searchPCB(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
-    else if (!(searchPCB(destptr, &readyQueue) || (destptr == current_process)))  // check this
+    else if (!searchPCB(destptr, &readyQueue) && (destptr != current_process))  // check this
     {
         // LA LISTA É PIENA????
         /* if dest was waiting for a message, we awaken it*/
@@ -83,10 +86,18 @@ void recv(unsigned int sender, unsigned int *payload, state_t *excState)
         excState->reg_v0 = (memaddr)msg->m_sender;
         if (msg->m_payload != (unsigned int)NULL)
         {
+            klog_print("\n alok! \n");
+            klog_print_hex(EXCEPTION_STATE->reg_a2);  
+
             klog_print("\n received something! \n");
-            payload = &msg->m_payload;
-            // klog_print_hex((unsigned int)&payload);
-            excState->reg_a2 = *(unsigned int *)payload;
+            *payload = *(unsigned int *)&msg->m_payload;
+            klog_print_hex(*payload);
+
+            //EXCEPTION_STATE->reg_a2 = *payload;
+
+               klog_print("\n alik! \n");
+            klog_print_hex(EXCEPTION_STATE->reg_a2);  
+
 
             // klog_print("\n maybe this \n");
             // klog_print_hex(*(unsigned int *)payload); // this is correct

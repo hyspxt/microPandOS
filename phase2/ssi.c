@@ -16,10 +16,13 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 	child->p_supportStruct = sup->support;
 	stateCpy(sup->state, &child->p_s);
 
+	insertProcQ(&readyQueue, child); // might check on this
 	insertChild(parent, child);
-	insertProcQ(&readyQueue, child);  // might check on this
 
 	processCount++;
+
+	klog_print("\n child \n");
+	klog_print_hex((unsigned int)child);
 	return (unsigned int)child;
 }
 
@@ -241,22 +244,35 @@ void SSILoop()
 {
 	while (TRUE)
 	{
-		unsigned int senderAddr, result;
-		unsigned int *payload;
+		unsigned int *senderAddr, result;
+		pcb_PTR payload;
 
 		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
-		senderAddr = EXCEPTION_STATE->reg_v0;
+		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
+
+		klog_print("\n a2 content \n ");
+		klog_print_hex(EXCEPTION_STATE->reg_a2);
+
+		klog_print("\n payload content \n ");
+		klog_print_hex((unsigned int)&payload);
+
+		klog_print("\n payload content \n ");
+		klog_print_hex((unsigned int) payload);
 
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
 		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)EXCEPTION_STATE->reg_a2);
+
 		// pretty sure that the problem is here ------------
 		klog_print("\n risultato SSIReq \n ");
-		klog_print_dec(result);
+		klog_print_hex((unsigned int)result);
+		klog_print("\n sending to \n ");
+		klog_print_hex((unsigned int)senderAddr);
+
 
 		if (result != NOPROC)
 		{
-			SYSCALL(SENDMESSAGE, senderAddr, result, 0);
+			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, (unsigned int)rez, 0);
 		}
 	}
 }

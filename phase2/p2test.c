@@ -172,12 +172,19 @@ pcb_t *create_process(state_t *s)
     klog_print("\n Payload memory address  1: \n");
     klog_print_hex((unsigned int)&payload);
     klog_print("\n P: \n");
-    klog_print_hex((unsigned int)&p);
-
+    klog_print_hex((unsigned int)p);
 
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&p), 0);
 
+
+    
+    klog_print("\n ritornato \n");
+    klog_print_hex((unsigned int)&p);
+
+
+    klog_print("\n goal \n");
+    klog_print_hex((unsigned int)p);
     return p;
 }
 
@@ -209,11 +216,12 @@ void test()
     if ((int)print_pcb == NOPROC)
         PANIC();
 
-    
-    
     klog_print("\n qui ci arrivo \n");
-    klog_print_hex((unsigned int) print_pcb);
+    klog_print_hex((unsigned int)print_pcb);
     // test print process
+    if (searchPCB(print_pcb, &readyQueue))
+        klog_print("\n Found the dest in readyQueue \n");
+
     print_term0("Don't Panic.\n");
 
     /* set up states of the other processes */
@@ -383,7 +391,7 @@ void test()
     /* start p7 */
     p7_pcb = create_process(&p7state);
     SYSCALL(SENDMESSAGE, (unsigned int)p7_pcb, START, 0);
-    
+
     /* start p8 */
     p8_pcb = create_process(&p8state);
     SYSCALL(SENDMESSAGE, (unsigned int)p8_pcb, START, 0);
