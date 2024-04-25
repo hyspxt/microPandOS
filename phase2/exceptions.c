@@ -58,7 +58,7 @@ unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, 
  * @param payload the message to be received
  * @return int
  */
-void recv(unsigned int sender, unsigned int *payload, state_t *excState)
+void recv(unsigned int sender, unsigned int payload, state_t *excState)
 {
 
     // TODOOO might check on this, it could be incorrect
@@ -84,23 +84,17 @@ void recv(unsigned int sender, unsigned int *payload, state_t *excState)
         klog_print_hex((memaddr)msg->m_sender);
 
         excState->reg_v0 = (memaddr)msg->m_sender;
-        if (msg->m_payload != (unsigned int)NULL)
+        if (msg->m_payload != 0)
         {
             klog_print("\n alok! \n");
             klog_print_hex(EXCEPTION_STATE->reg_a2);  
 
             klog_print("\n received something! \n");
-            *payload = *(unsigned int *)&msg->m_payload;
-            klog_print_hex(*payload);
+            unsigned int *a2 = (unsigned int *)payload;
+            *a2 = msg->m_payload;
 
-            //EXCEPTION_STATE->reg_a2 = *payload;
-
-               klog_print("\n alik! \n");
+            klog_print("\n alik! \n");
             klog_print_hex(EXCEPTION_STATE->reg_a2);  
-
-
-            // klog_print("\n maybe this \n");
-            // klog_print_hex(*(unsigned int *)payload); // this is correct
         }
         freeMsg(msg);
         excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
@@ -140,7 +134,7 @@ void syscallHandler(state_t *excState)
             excState->reg_v0 = send((memaddr)current_process, excState->reg_a1, excState->reg_a2, excState);
             break;
         case RECEIVEMESSAGE:
-            recv(excState->reg_a1, &excState->reg_a2, excState);
+            recv(excState->reg_a1, excState->reg_a2, excState);
             break;
         default:
             if (syscallCode >= 1)

@@ -261,7 +261,7 @@ void SSILoop()
 
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
-		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)EXCEPTION_STATE->reg_a2);
+		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
 
 		// pretty sure that the problem is here ------------
 		klog_print("\n risultato SSIReq \n ");
@@ -272,7 +272,7 @@ void SSILoop()
 
 		if (result != NOPROC)
 		{
-			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, (unsigned int)rez, 0);
+			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
 		}
 	}
 }

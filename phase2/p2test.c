@@ -179,6 +179,7 @@ pcb_t *create_process(state_t *s)
 
 
     
+
     klog_print("\n ritornato \n");
     klog_print_hex((unsigned int)&p);
 
