@@ -1,22 +1,14 @@
 #include "./headers/lib.h"
 
-unsigned int searchPCB(pcb_PTR p, struct list_head *list)
-{
-    pcb_t *tmp;
-    list_for_each_entry(tmp, list, p_list)
-    {
-        if (p == tmp)
-            return 1;
-    }
-    return 0;
-}
-
 /**
  * @brief Sends a message to a PCB identified by dest address. If the process is not in the system, the message is not sent.
  *        If the process is waiting for a message, it is awakened and put in the ready queue.
+ *        After the message is put in the inbox of the corresponding PCB, it is loaded the new state.
  *
- * @param dest the destination process
- * @param payload the message to be sent
+ * @param sender the address of sender pcb
+ * @param dest the address of destination pcb - register a1 content
+ * @param payload the address of the payload to be sent - register a2 content
+ * @param excState the state of the process
  * @return int
  */
 unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *excState)
@@ -32,38 +24,34 @@ unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, 
     msg->m_sender = senderptr;
     msg->m_payload = payload;
 
-    if (searchPCB(destptr, &readyQueue))
-        klog_print("\n Found the dest in readyQueue \n");
-
-    // ENTRA QUA DENTRO
     if (searchPCB(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
-    else if (!searchPCB(destptr, &readyQueue) && (destptr != current_process))  // check this
+    else if ((destptr != current_process) && !searchPCB(destptr, &readyQueue)) // check this
     {
-        // LA LISTA É PIENA????
         /* if dest was waiting for a message, we awaken it*/
         insertProcQ(&readyQueue, destptr);
     }
     insertMessage(&destptr->msg_inbox, msg);
-    excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
+    excState->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
     LDST(excState);
+    /* providing 0 as returning value to identifyy a successful send operation */
     return 0;
 }
 
 /**
  * @brief Receives a message from a PCB identified by sender address. If the process is not in the system, the message is not received.
- *        If the process is waiting for a message, it is put in the waiting queue.
+ *        If the process find no message, it is put in the waiting queue by calling the scheduler.
+ *        After the message is received, it is loaded the new state.
+ *
  *
  * @param sender the sender PCB address
- * @param payload the message to be received
- * @return int
+ * @param payload the memory area in which the payload will be stored
+ * @param excState the state of the process
+ * @return void
  */
 void recv(unsigned int sender, unsigned int payload, state_t *excState)
 {
-
-    // TODOOO might check on this, it could be incorrect
-
-    /* parameter comes in memory address form, so we need to do a casting */
+    /* parameter comes from the registers in memory address form, so we need to do a casting */
     pcb_PTR senderptr = (pcb_PTR)sender;
     msg_PTR msg;
 
@@ -80,21 +68,13 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
     }
     else
     {
-        klog_print("\n Found a msg from \n");
-        klog_print_hex((memaddr)msg->m_sender);
-
+        /* putting sender address in v0 register as returning value of recv */
         excState->reg_v0 = (memaddr)msg->m_sender;
         if (msg->m_payload != 0)
         {
-            klog_print("\n alok! \n");
-            klog_print_hex(EXCEPTION_STATE->reg_a2);  
-
             klog_print("\n received something! \n");
-            unsigned int *a2 = (unsigned int *)payload;
-            *a2 = msg->m_payload;
-
-            klog_print("\n alik! \n");
-            klog_print_hex(EXCEPTION_STATE->reg_a2);  
+            unsigned int *recvd = (unsigned int *)payload;
+            *recvd = msg->m_payload;
         }
         freeMsg(msg);
         excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
@@ -136,12 +116,8 @@ void syscallHandler(state_t *excState)
         case RECEIVEMESSAGE:
             recv(excState->reg_a1, excState->reg_a2, excState);
             break;
-        default:
-            if (syscallCode >= 1)
-            {
-                passUpOrDie(excState, GENERALEXCEPT);
-            }
-            break;
+        default: /* in case the code retrieved from v0 register isn't valid*/
+            passUpOrDie(excState, GENERALEXCEPT);
         }
     }
 }

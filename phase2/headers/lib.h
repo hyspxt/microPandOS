@@ -64,6 +64,7 @@ void passUpOrDie(state_t *, unsigned int);
 void interruptHandler(state_t *, unsigned int);
 void PLTHandler(state_t *);
 void intervalTimerHandler(state_t *);
+void deviceHandler(unsigned int, state_t *, unsigned int);
 
 /* scheduler module */
 void scheduler();
