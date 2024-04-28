@@ -217,12 +217,7 @@ void test()
     if ((int)print_pcb == NOPROC)
         PANIC();
 
-    klog_print("\n qui ci arrivo \n");
-    klog_print_hex((unsigned int)print_pcb);
     // test print process
-    if (searchPCB(print_pcb, &readyQueue))
-        klog_print("\n Found the dest in readyQueue \n");
-
     print_term0("Don't Panic.\n");
 
     /* set up states of the other processes */

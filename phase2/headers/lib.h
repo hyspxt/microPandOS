@@ -19,7 +19,7 @@ extern void klog_print_dec(unsigned int);
 
 /* -- VARIABLES -- */
 extern unsigned int processCount, softBlockCount;
-extern pcb_PTR current_process;
+extern pcb_PTR current_process, pcbIO;
 extern unsigned int startTOD;
 extern unsigned int pidCount;
 
@@ -48,7 +48,6 @@ void SSILoop();
 unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
 void terminateProcess(pcb_PTR);
-void deviceRequest(pcb_PTR, memaddr);
 void wait4Clock(pcb_PTR);
 unsigned int getSupportData(pcb_PTR);
 unsigned int getProcessID(pcb_PTR, pcb_PTR);
@@ -65,6 +64,7 @@ void interruptHandler(state_t *, unsigned int);
 void PLTHandler(state_t *);
 void intervalTimerHandler(state_t *);
 void deviceHandler(unsigned int, state_t *, unsigned int);
+pcb_PTR unblockByDeviceNumber(unsigned int, struct list_head *);
 
 /* scheduler module */
 void scheduler();

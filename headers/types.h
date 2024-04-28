@@ -59,6 +59,9 @@ typedef struct pcb_t
 
     /* process id */
     int p_pid;
+
+    /* if pcb is blocked on some device, this number represent that device */
+    unsigned int blockedOnDevice;
 } pcb_t, *pcb_PTR;
 
 /* message entry type */

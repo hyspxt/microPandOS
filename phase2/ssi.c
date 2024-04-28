@@ -1,4 +1,5 @@
 #include "./headers/lib.h"
+pcb_PTR pcbIO;
 
 /*
  * @brief Creates a child process of the parent process. Then, the child process is inserted in the ready queue.
@@ -11,7 +12,6 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 {
 	pcb_PTR child = allocPcb();
 
-	child->p_pid = pidCount++;
 	child->p_time = 0;
 	child->p_supportStruct = sup->support;
 	stateCpy(sup->state, &child->p_s);
@@ -59,71 +59,6 @@ void terminateProcess(pcb_PTR sender)
 
 	outChild(sender);
 	freePcb(sender);
-}
-
-/**
- * @brief Calculate the device number and the interrupt line of the device that the process is waiting for.
- *
- * @param doioPTR the IO request
- * @param sender the process that requested the service
- * @return void
- */
-void deviceRequest(pcb_PTR sender, memaddr addr)
-{
-	/* We need to distinguish betweeen terminal and not-terminal devices, that are transm and recv
-	so, according to uMPS3 - Principles of Operation, each device is identified by the interrupt line
-	it is attached to and its device number, an integer in the range 0-7. */
-	for (int deviceLine = 0; deviceLine < DEVPERINT; deviceLine++)
-	{
-
-		/* DEV_REG_ADDR(..) is a macro defined in arch.h that return the adress of the register of the device, using
-		its type and its identifier. MAX 8 instances supported by default.
-		Terminal devices are identified by the IL_TERMINAL constant, that is 7. */
-		termreg_t *termreg = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, deviceLine);
-		if ((memaddr)&termreg->transm_command == addr)
-		{
-			outProcQ(&readyQueue, sender);
-			insertProcQ(&blockedTerminalTransmQueue, sender);
-		}
-		else if ((memaddr)&termreg->recv_command == addr)
-		{
-			outProcQ(&readyQueue, sender);
-			insertProcQ(&blockedTerminalRecvQueue, sender);
-		}
-		return;
-	}
-
-	/* If the device is not a terminal device, then it is a disk, flash, ethernet or printer device
-	so, we iter on those basing on their identifiers.
-	According to uMPS3 - Principles of Operation p.29 devices have interrupts pending on interrupt lines 3-7.
-	That means that when bit i in word j is set to one, then device i attached to interrupt line j + 3 has a pending interrupt. */
-	for (int iter_dev = 3; iter_dev < IL_TERMINAL; iter_dev++)
-	{
-		for (int deviceLine = 0; deviceLine < DEVPERINT; deviceLine++)
-		{
-			dtpreg_t *dtpreg = (dtpreg_t *)DEV_REG_ADDR(iter_dev, deviceLine);
-			if ((memaddr)&dtpreg->command == addr)
-			{
-				outProcQ(&readyQueue, sender);
-				switch (iter_dev)
-				{
-				case IL_DISK:
-					insertProcQ(&blockedDiskQueue, sender);
-					break;
-				case IL_FLASH:
-					insertProcQ(&blockedFlashQueue, sender);
-					break;
-				case IL_ETHERNET:
-					insertProcQ(&blockedEthernetQueue, sender);
-					break;
-				case IL_PRINTER:
-					insertProcQ(&blockedPrinterQueue, sender);
-					break;
-				}
-				return;
-			}
-		}
-	}
 }
 
 /**
@@ -185,8 +120,8 @@ void setPLT(unsigned int time)
  */
 void wait4Clock(pcb_PTR sender)
 {
-	insertProcQ(&pseudoClockQueue, sender);
 	softBlockCount++;
+	insertProcQ(&pseudoClockQueue, sender);
 }
 
 /**
@@ -217,7 +152,7 @@ unsigned int getProcessID(pcb_PTR sender, pcb_PTR arg)
 }
 
 /**
- * @brief Handles the synchronous I/O requests. T
+ * @brief Handles the synchronous I/O requests. 
  *
  * @param doioPTR the IO request
  * @param sender the process that requested the service
@@ -225,11 +160,59 @@ unsigned int getProcessID(pcb_PTR sender, pcb_PTR arg)
  */
 void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 {
-
-	/* if a process request the DOIO service, it must be blocked on the correct device */
 	softBlockCount++;
-	deviceRequest(sender, (memaddr)doioPTR->commandAddr); // save the waiting pcb in the correct device queue
-	*(doioPTR->commandAddr) = doioPTR->commandValue;
+	/* if a process request the DOIO service, it must be blocked on the correct device */
+	unsigned int deviceCommand = (memaddr)doioPTR->commandAddr;
+	/* We need to distinguish betweeen terminal and not-terminal devices, that are transm and recv
+	so, according to uMPS3 - Principles of Operation, each device is identified by the interrupt line
+	it is attached to and its device number, an integer in the range 0-7. Important! in order of priority */
+
+	/* If the device is not a terminal device, then it is a disk, flash, ethernet or printer device
+       so, we iter on those basing on their identifiers.
+       According to uMPS3 - Principles of Operation p.29 devices have interrupts pending on interrupt lines 3-7.
+       That means that when bit i in word j is set to one, then device i attached to interrupt line j + 3 has a pending interrupt. */
+
+	for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++){
+		/* calculate the address for this device's device register */
+		termreg_t *devAddrBase = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, devNo);
+		if ((memaddr)&devAddrBase->transm_command == deviceCommand){
+			sender->blockedOnDevice = devNo;
+			outProcQ(&readyQueue, sender);
+			insertProcQ(&blockedTerminalTransmQueue, sender);
+		}
+		else if ((memaddr)&devAddrBase->recv_command == deviceCommand){
+			sender->blockedOnDevice = devNo;
+			outProcQ(&readyQueue, sender);
+			insertProcQ(&blockedTerminalRecvQueue, sender);
+		}		
+	}
+
+	for (unsigned int interruptLine = DEV_IL_START; interruptLine < N_INTERRUPT_LINES; interruptLine++){
+		for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++){
+			/* calculate the address for this device's device register */
+			devreg_t *devAddrBase = (devreg_t *)DEV_REG_ADDR(interruptLine, devNo);
+			if ((memaddr)&devAddrBase->dtp.command == deviceCommand){
+				sender->blockedOnDevice = devNo;
+				outProcQ(&readyQueue, sender);
+				switch (interruptLine){
+					case IL_DISK:
+						insertProcQ(&blockedDiskQueue, sender);
+						break;
+					case IL_FLASH:
+						insertProcQ(&blockedFlashQueue, sender);
+						break;
+					case IL_ETHERNET:
+						insertProcQ(&blockedEthernetQueue, sender);
+						break;
+					case IL_PRINTER:
+						insertProcQ(&blockedPrinterQueue, sender);
+						break;
+				}
+			}
+		}
+	}
+	 *(doioPTR->commandAddr) = doioPTR->commandValue;
+
 }
 
 /**
@@ -250,25 +233,10 @@ void SSILoop()
 		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
 		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
 
-		klog_print("\n a2 content \n ");
-		klog_print_hex(EXCEPTION_STATE->reg_a2);
-
-		klog_print("\n payload content \n ");
-		klog_print_hex((unsigned int)&payload);
-
-		klog_print("\n payload content \n ");
-		klog_print_hex((unsigned int) payload);
 
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
 		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
-
-		// pretty sure that the problem is here ------------
-		klog_print("\n risultato SSIReq \n ");
-		klog_print_hex((unsigned int)result);
-		klog_print("\n sending to \n ");
-		klog_print_hex((unsigned int)senderAddr);
-
 
 		if (result != NOPROC)
 		{
@@ -306,11 +274,13 @@ unsigned int SSIRequest(pcb_PTR sender, ssi_payload_t *payload)
 	case TERMPROCESS:
 		if (payload->arg == NULL)
 		{ // if the argument is NULL, then the process that requested the service must be terminated
-			res = NOPROC;
 			terminateProcess(sender);
+			res = NOPROC;
 		}
-		else
+		else{
 			terminateProcess(payload->arg);
+			res = 0;
+		}
 		break;
 	case DOIO:
 		doio(payload->arg, sender);

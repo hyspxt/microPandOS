@@ -119,8 +119,6 @@ int main()
          and the PC set to the address of the SSI_function_entry_point */
     ssi_pcb = NULL;
     ssi_pcb = allocPcb();
-    ssi_pcb->p_pid = 1;
-    pidCount++;
 
     /* IEc -> represents the CURRENT interrupt enable bit 
        KUc > represents the CURRENT state of Kernel/User mode
@@ -138,8 +136,6 @@ int main()
         and the PC set to the address of test */
     new_pcb = NULL;
     new_pcb = allocPcb();
-    new_pcb->p_pid = 2;
-    pidCount = 2;
     new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
     RAMTOP(new_pcb->p_s.reg_sp);
     new_pcb->p_s.reg_sp -= 2 * PAGESIZE; // FRAMESIZE according to specs??
