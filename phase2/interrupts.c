@@ -17,7 +17,6 @@ void PLTHandler(state_t *excState)
     updateCPUTime(current_process);
     stateCpy(&current_process->p_s, excState);
     insertProcQ(&readyQueue, current_process);
-
     scheduler();
 }
 
@@ -47,6 +46,7 @@ void intervalTimerHandler(state_t *excState)
         insertMessage(&awknPcb->msg_inbox, msg);
         insertProcQ(&readyQueue, awknPcb);
         softBlockCount--;
+        awknPcb = removeProcQ(&pseudoClockQueue);
     }
 
     if (current_process != NULL)
@@ -80,55 +80,47 @@ void deviceHandler(unsigned int cause, state_t *excState, unsigned int interrupt
     unsigned int devNo, mask, devStatus;
     /* according to specs, use a switch and DEVxON costant to determine device number */
     mask = devRegArea->interrupt_dev[interruptLine - 3];
-    if (mask & DEV0ON)
-        devNo = 0;
-    else if (mask & DEV1ON)
-        devNo = 1;
-    else if (mask & DEV2ON)
-        devNo = 2;
-    else if (mask & DEV3ON)
-        devNo = 3;
-    else if (mask & DEV4ON)
-        devNo = 4;
-    else if (mask & DEV5ON)
-        devNo = 5;
+    if (mask & DEV7ON)
+        devNo = 7;
     else if (mask & DEV6ON)
         devNo = 6;
-    else if (mask & DEV7ON)
-        devNo = 7;
+    else if (mask & DEV5ON)
+        devNo = 5;
+    else if (mask & DEV4ON)
+        devNo = 4;
+    else if (mask & DEV3ON)
+        devNo = 3;
+    else if (mask & DEV2ON)
+        devNo = 2;
+    else if (mask & DEV1ON)
+        devNo = 1;
+    else if (mask & DEV0ON)
+        devNo = 0;
 
-    klog_print("\n device number: \n");
-    klog_print_dec(devNo);
 
     pcb_PTR outPcb;
     if (interruptLine == IL_TERMINAL)
     {
-        klog_print("\n catamarano \n");
         /* In this case, the device is terminal transm or recv, so
         we must distinguish between them.*/
         termreg_t *termReg = (termreg_t *)DEV_REG_ADDR(interruptLine, devNo);
-        klog_print("\n zigo zago \n");
         /* According to pops section 5.7 p.42, status code 5 for both recv_status and trasm_status
         imply a successful operation on the device.*/
         if ((termReg->transm_status & 0x000000FF) == OKCHARTRANS)
         {
-            klog_print("\n catamarano grande \n");
             devStatus = termReg->transm_status;
             termReg->transm_command = ACK;
             outPcb = unblockByDeviceNumber(devNo, &blockedTerminalTransmQueue);
         }
         else
         {
-            klog_print("\n catamarano piccolo \n");
             devStatus = termReg->recv_status;
             termReg->recv_command = ACK;
             outPcb = unblockByDeviceNumber(devNo, &blockedTerminalRecvQueue);
         }
-        klog_print("\n nirvana \n");
     }
     else
     {
-        klog_print("\n cavallo \n");
         /* In this case, the device is not terminal, neither transm or recv, so
         it could be disk, flash, ethernet or printer.*/
         dtpreg_t *not_termReg = (dtpreg_t *)DEV_REG_ADDR(interruptLine, devNo);
@@ -154,6 +146,7 @@ void deviceHandler(unsigned int cause, state_t *excState, unsigned int interrupt
             break;
         }
     }
+
     if (outPcb != NULL)
     {
         outPcb->p_s.reg_v0 = devStatus;

@@ -169,23 +169,8 @@ pcb_t *create_process(state_t *s)
         .service_code = CREATEPROCESS,
         .arg = &ssi_create_process,
     };
-    klog_print("\n Payload memory address  1: \n");
-    klog_print_hex((unsigned int)&payload);
-    klog_print("\n P: \n");
-    klog_print_hex((unsigned int)p);
-
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&p), 0);
-
-
-    
-
-    klog_print("\n ritornato \n");
-    klog_print_hex((unsigned int)&p);
-
-
-    klog_print("\n goal \n");
-    klog_print_hex((unsigned int)p);
     return p;
 }
 
@@ -351,8 +336,13 @@ void test()
 
     print_term0("p1 knows p4's first incarnation ended\n");
 
+    klog_print("p4");
+
     // try to reach p4's second incarnation
     int reply = SYSCALL(SENDMESSAGE, (unsigned int)p4_pcb_v2, 0, 0);
+
+    klog_print("\n Reply: \n");
+    klog_print_dec(reply);
 
     if (reply == DEST_NOT_EXIST)
         print_term0("p1 knows p4's second incarnation ended\n");

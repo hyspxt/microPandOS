@@ -55,7 +55,7 @@ unsigned int getProcessID(pcb_PTR, pcb_PTR);
 /* exception module*/
 void exceptionHandler();
 void syscallHandler(state_t *);
-unsigned int send(unsigned int, unsigned int, unsigned int, state_t *);
+int send(unsigned int, unsigned int, unsigned int, state_t *);
 void recv(unsigned int, unsigned int, state_t *);
 void passUpOrDie(state_t *, unsigned int);
 

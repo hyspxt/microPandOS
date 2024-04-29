@@ -68,7 +68,6 @@ static void initPcbValues(pcb_PTR p)
  */
 void freePcb(pcb_t *p)
 {
-    list_del(&p->p_list); // remove the pcb from the list of pcbs (where it was before)
     list_add_tail(&p->p_list, &pcbFree_h);
 }
 

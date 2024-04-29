@@ -11,7 +11,7 @@
  * @param excState the state of the process
  * @return int
  */
-unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *excState)
+int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *excState)
 {
     msg_PTR msg = allocMsg();
     if (msg == NULL)
@@ -32,8 +32,6 @@ unsigned int send(unsigned int sender, unsigned int dest, unsigned int payload, 
         insertProcQ(&readyQueue, destptr);
     }
     insertMessage(&destptr->msg_inbox, msg);
-    excState->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
-    LDST(excState);
     /* providing 0 as returning value to identifyy a successful send operation */
     return 0;
 }
@@ -72,7 +70,6 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
         excState->reg_v0 = (memaddr)msg->m_sender;
         if (msg->m_payload != 0)
         {
-            klog_print("\n received something! \n");
             unsigned int *recvd = (unsigned int *)payload;
             *recvd = msg->m_payload;
         }
@@ -112,6 +109,8 @@ void syscallHandler(state_t *excState)
         {
         case SENDMESSAGE:
             excState->reg_v0 = send((memaddr)current_process, excState->reg_a1, excState->reg_a2, excState);
+            excState->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
+            LDST(excState);
             break;
         case RECEIVEMESSAGE:
             recv(excState->reg_a1, excState->reg_a2, excState);

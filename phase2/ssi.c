@@ -20,9 +20,6 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 	insertChild(parent, child);
 
 	processCount++;
-
-	klog_print("\n child \n");
-	klog_print_hex((unsigned int)child);
 	return (unsigned int)child;
 }
 
@@ -179,12 +176,14 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 			sender->blockedOnDevice = devNo;
 			outProcQ(&readyQueue, sender);
 			insertProcQ(&blockedTerminalTransmQueue, sender);
+			devNo = N_DEV_PER_IL;
 		}
 		else if ((memaddr)&devAddrBase->recv_command == deviceCommand){
 			sender->blockedOnDevice = devNo;
 			outProcQ(&readyQueue, sender);
 			insertProcQ(&blockedTerminalRecvQueue, sender);
-		}		
+			devNo = N_DEV_PER_IL;
+		}	
 	}
 
 	for (unsigned int interruptLine = DEV_IL_START; interruptLine < N_INTERRUPT_LINES; interruptLine++){
@@ -208,6 +207,8 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 						insertProcQ(&blockedPrinterQueue, sender);
 						break;
 				}
+				devNo = N_DEV_PER_IL;
+				interruptLine = N_INTERRUPT_LINES;
 			}
 		}
 	}
@@ -229,14 +230,12 @@ void SSILoop()
 	{
 		unsigned int *senderAddr, result;
 		pcb_PTR payload;
-
 		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
 		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
-
-
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
 		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
+
 
 		if (result != NOPROC)
 		{
@@ -255,10 +254,6 @@ void SSILoop()
 unsigned int SSIRequest(pcb_PTR sender, ssi_payload_t *payload)
 {
 	unsigned int res = 0;
-
-	klog_print("\n payload service code \n");
-	klog_print_dec(payload->service_code);
-
 	switch (payload->service_code)
 	{
 	case CREATEPROCESS:
