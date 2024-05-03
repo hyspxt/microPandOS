@@ -2,13 +2,13 @@
 
 /**
  * @brief Sends a message to a PCB identified by dest address. If the process is not in the system, the message is not sent.
- *        If the process is waiting for a message, it is awakened and put in the ready queue.
+ *        If the process is waiting for a message (so its performing a recv), it is awakened and put in the ready queue.
  *        After the message is put in the inbox of the corresponding PCB, it is loaded the new state.
  *
  * @param sender the address of sender pcb
  * @param dest the address of destination pcb - register a1 content
  * @param payload the address of the payload to be sent - register a2 content
- * @param excState the state of the process
+ * @param excState pointer to the processor state (saved exception state)
  * @return int
  */
 int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *excState)
@@ -17,7 +17,8 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *
     if (msg == NULL)
         return MSGNOGOOD;
 
-    /* parameter comes in memory address form, so we need to do a casting */
+    /* parameter comes in memory address form cause they're taken from the registers,
+    so we need to do a casting for both. */
     pcb_PTR senderptr = (pcb_PTR)sender;
     pcb_PTR destptr = (pcb_PTR)dest;
 
@@ -26,9 +27,8 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *
 
     if (searchPCB(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
-    else if ((destptr != current_process) && !searchPCB(destptr, &readyQueue)) // check this
-    {
-        /* if dest was waiting for a message, we awaken it*/
+    else if ((destptr != current_process) && !searchPCB(destptr, &readyQueue))
+    { /* if dest was waiting for a message, we awaken it*/
         insertProcQ(&readyQueue, destptr);
     }
     insertMessage(&destptr->msg_inbox, msg);
@@ -40,11 +40,12 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *
  * @brief Receives a message from a PCB identified by sender address. If the process is not in the system, the message is not received.
  *        If the process find no message, it is put in the waiting queue by calling the scheduler.
  *        After the message is received, it is loaded the new state.
+ *        After the recv, in v0 there will be the sender address and in a2 the payload.
  *
  *
  * @param sender the sender PCB address
  * @param payload the memory area in which the payload will be stored
- * @param excState the state of the process
+ * @param excState pointer to the processor state (saved exception state)
  * @return void
  */
 void recv(unsigned int sender, unsigned int payload, state_t *excState)
@@ -58,15 +59,14 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
     else
         msg = popMessage(&current_process->msg_inbox, senderptr);
 
-    if (msg == NULL) /* so there aren't any message in the inbox, we should put it in waiting state */
-    {
+    if (msg == NULL) 
+    { /* so there aren't any message in the inbox, we should put it in waiting state */
         stateCpy(excState, &current_process->p_s);
-        updateCPUTime(current_process);
+        updatePCBTime(current_process);
         scheduler();
     }
     else
-    {
-        /* putting sender address in v0 register as returning value of recv */
+    { /* putting sender address in v0 register as returning value of recv */
         excState->reg_v0 = (memaddr)msg->m_sender;
         if (msg->m_payload != 0)
         {
@@ -74,36 +74,36 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
             *recvd = msg->m_payload;
         }
         freeMsg(msg);
-        excState->pc_epc += WORDLEN; // to avoid infinite loop of SYSCALLs
+        excState->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
         LDST(excState);
     }
 }
 
 /**
- * @brief SYSCALL handler. A System call exception occurs when the SYSCALL is executed.
+ * @brief SYSCALL handler. A Syscall exception happens when SYSCALL is called, either by SYS1, SYS2,....
+ *        It is important to mention that SYSCALL return value is taken from v0 register
+ *        (this because some functions in the test din't work properly otherwise).
  *
- * @param void
+ * @param excState pointer to the processor state (saved exception state)
  * @return void
  */
 void syscallHandler(state_t *excState)
 {
     /* Information is stored in a0, a1, a2, a3 general purpose registers.
-    Futhermore, a SYSCALL request can be only done in kernel-mode, and if a0 contained
+    Futhermore, a SYSCALL request can be only done in kernel-mode, and only if a0 contained
     a value in the range [-1...-2]/  */
 
     /* We check if the process is in kernel mode looking up at the bit 1 (of 31) of the status register:
-    if is 0, then is in Kernel mode, else it's in user mode*/
-
-    if ((excState->status << 30) >> 31)
-    {
-        /* We check if that PCB status is in USER mode
+    if is 0, then is in Kernel mode, else it's in user mode. MAXPAGE is the size of the cause register */
+    if ((excState->status << (MAXPAGES - 2)) >> (MAXPAGES - 1))
+    {/* We check if that PCB in user-mode checking the status
         in which case, should trigger a Program Trap (PassUp or Die) exception response and the subsequent handler.
         According to princOfOperations, Reserved instruction should be code 10. */
         excState->cause = ((excState->cause) & CLEAREXECCODE) | (PRIVINSTR << CAUSESHIFT);
         passUpOrDie(excState, GENERALEXCEPT);
     }
     else
-    {
+    { /* otherwise, the process is in kernel mode and we can proceed */
         unsigned int syscallCode = excState->reg_a0;
         switch (syscallCode)
         {
@@ -115,27 +115,34 @@ void syscallHandler(state_t *excState)
         case RECEIVEMESSAGE:
             recv(excState->reg_a1, excState->reg_a2, excState);
             break;
-        default: /* in case the code retrieved from v0 register isn't valid*/
+        default: /* in case the code retrieved from v0 register isn't valid, trap vector*/
             passUpOrDie(excState, GENERALEXCEPT);
         }
     }
 }
 
+/**
+ * @brief "Passes up" exception handling storing the saved exception in a location
+ *        accessible to the nucleus and pass the control to the proper handler.
+ *
+ * @param excState pointer to the processor state (saved exception state)
+ * @param excType exception related constant
+ * @return void
+ */
 void passUpOrDie(state_t *excState, unsigned int excType)
 {
     if (current_process != NULL)
     {
         if (current_process->p_supportStruct == NULL)
-        {
+        { /* If there's no support struct, the process and all his progeny will die */
             terminateProcess(current_process);
             scheduler();
         }
         else
-        {
+        { /* the handling is passed up to a specified routine */
+            context_t cxt = current_process->p_supportStruct->sup_exceptContext[excType];
             stateCpy(excState, &current_process->p_supportStruct->sup_exceptState[excType]);
-            LDCXT(current_process->p_supportStruct->sup_exceptContext[excType].stackPtr,
-                  current_process->p_supportStruct->sup_exceptContext[excType].status,
-                  current_process->p_supportStruct->sup_exceptContext[excType].pc);
+            LDCXT(cxt.stackPtr, cxt.status, cxt.pc);
         }
     }
 }
@@ -149,8 +156,6 @@ void passUpOrDie(state_t *excState, unsigned int excType)
  */
 void exceptionHandler()
 {
-
-    // state_t *excState = (state_t *)BIOSDATAPAGE;1
     /* When the exception is raised, this function will be called (new stack), TLB-refill events excluded.
     We can distinguish the type of exception by reading the cause in the processor state at the time of the exception.
     In particular, that value will be at the start of BIOS data page. In advance, we assume that PCB is already set to kernel mode and have interrupts disabled. */
@@ -164,25 +169,24 @@ void exceptionHandler()
     switch (excCode)
     {
     case IOINTERRUPTS:
-        /* TLB exception */
+        /* Interrupts */
         interruptHandler(EXCEPTION_STATE, cause);
         break;
     case 1 ... TLBINVLDS:
-        /* Program Trap */
+        /* TLB exceptions */
         passUpOrDie(EXCEPTION_STATE, PGFAULTEXCEPT);
         break;
     case 4 ... 7:
-        // entra qui -----------
+        /* Program Traps */
         passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
         break;
     case SYSEXCEPTION:
-        /* System Call */
+        /* System Calls (SYS1 or SYS2) */
         syscallHandler(EXCEPTION_STATE);
         break;
     case BREAKEXCEPTION ... 12:
+        /* Program Traps */
         passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
         break;
-    default:
-        PANIC();
     }
 }

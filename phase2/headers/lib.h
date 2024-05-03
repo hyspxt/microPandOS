@@ -21,16 +21,12 @@ extern void klog_print_dec(unsigned int);
 extern unsigned int processCount, softBlockCount;
 extern pcb_PTR current_process, pcbIO;
 extern unsigned int startTOD;
-extern unsigned int pidCount;
 
 extern struct list_head readyQueue;
 
-// we need one list of blocked pcb for every device, each one described in Section 5 in uMPS3 - Principles of Operation
+/* we need one list of blocked pcb for every device, each one described in Section 5 in uMPS3 - Principles of Operation */
 extern struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue, blockedTerminalTransmQueue,blockedTerminalRecvQueue;
 extern struct list_head pseudoClockQueue;
-
-// extern struct list_head waitingMsgQueue;
-
 extern struct list_head pcbFree_h;
 
 extern pcb_PTR ssi_pcb, new_pcb;
@@ -48,9 +44,14 @@ void SSILoop();
 unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
 void terminateProcess(pcb_PTR);
+void doio(ssi_do_io_PTR, pcb_PTR);
 void wait4Clock(pcb_PTR);
 unsigned int getSupportData(pcb_PTR);
 unsigned int getProcessID(pcb_PTR, pcb_PTR);
+void setPLT(unsigned int);
+unsigned int getCPUTime(pcb_PTR);
+unsigned int getTOD();
+void updatePCBTime(pcb_PTR);
 
 /* exception module*/
 void exceptionHandler();
@@ -68,12 +69,6 @@ pcb_PTR unblockByDeviceNumber(unsigned int, struct list_head *);
 
 /* scheduler module */
 void scheduler();
-
-/* timers related functions */
-void setPLT(unsigned int);
-unsigned int getCPUTime(pcb_PTR);
-unsigned int getTOD();
-void updateCPUTime(pcb_PTR);
 
 /* miscellaneous  */
 unsigned int searchPCB(pcb_PTR, struct list_head *);

@@ -1,16 +1,19 @@
 #include "./headers/lib.h"
 
 pcb_PTR current_process;
-unsigned int processCount, softBlockCount;
+unsigned int processCount;
+/* counter of processes blocked for any reasons, allow the scheduler to track deadlock and wait4clock situation */
+unsigned int softBlockCount;
 unsigned int startTOD;
 
-/* Queue of PCBs that are in READY state. It is a tail pointer. */
+/* Queue of PCBs that are in READY state */
 struct list_head readyQueue;
-
-struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue, blockedTerminalTransmQueue, blockedTerminalRecvQueue;
+/* Queues of PCBs that are blocked in terminal devices */
+struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue;
+/* Queues of PCBs that are blocked in non-terminal device, transm or recv*/
+struct list_head blockedTerminalTransmQueue, blockedTerminalRecvQueue;
+/* Queue of PCBs that are waiting for a WaitForClock service */
 struct list_head pseudoClockQueue;
-
-unsigned int pidCount;
 
 pcb_PTR ssi_pcb, new_pcb;
 
@@ -40,38 +43,6 @@ void stateCpy(state_t *src, state_t *dest){
 		dest->gpr[i] = src->gpr[i];
 }
 
-void stateCPY4debug(state_t *src, state_t *dest){
-    klog_print("Copying...\n");
-
-    if (dest != NULL)
-        klog_print("dest is not NULL\n");
-
-    if (src != NULL)
-        klog_print("src is not NULL!\n");
-
-    if (dest->status == 0)
-        klog_print("dest->status is not NULL\n");
-    if (src->status == 0)
-        klog_print("src->status is not NULL\n");
-
-    dest->status = src->status;
-    klog_print("1...\n");
-	dest->pc_epc = src->pc_epc;
-    klog_print("2...\n");
-    dest->cause = src->cause;
-    klog_print("3...\n");
-    dest->entry_hi = src->entry_hi;
-    klog_print("4...\n");
-    dest->hi = src->hi;
-    klog_print("5...\n");
-	dest->lo = src->lo;
-    klog_print("6...\n");
-	for(int i=0; i<STATE_GPR_LEN; i++)
-		dest->gpr[i] = src->gpr[i];
-    klog_print("Finish all ok\n");
-}
-
-
 /**
  * @brief This module contains the microPandOS entry point, that is the Nucleus initialization.
  *        after the initialization, the Nucleus will call the scheduler.
@@ -96,7 +67,6 @@ int main()
     processCount = 0;
     softBlockCount = 0;
     current_process = NULL;
-    pidCount = 0;
 
     mkEmptyProcQ(&readyQueue);
     /* Blocked PCBs Queues */
@@ -123,9 +93,8 @@ int main()
     /* IEc -> represents the CURRENT interrupt enable bit 
        KUc > represents the CURRENT state of Kernel/User mode
     It is important to mention that to setting up a new processor state, we should set 
-    PREVIOUS bits and not CURRENT ones (so basically, IEp and KUp counterparts).
-    */
-    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // kernel mode is by default when KUc = 0
+    PREVIOUS bits and not CURRENT ones (so basically, IEp and KUp counterparts). */
+    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; /* kernel mode is by default when KUc = 0 */
     RAMTOP(ssi_pcb->p_s.reg_sp);
     ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) SSILoop;
     insertProcQ(&readyQueue, ssi_pcb);
@@ -138,11 +107,12 @@ int main()
     new_pcb = allocPcb();
     new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
     RAMTOP(new_pcb->p_s.reg_sp);
-    new_pcb->p_s.reg_sp -= 2 * PAGESIZE; // FRAMESIZE according to specs??
+    new_pcb->p_s.reg_sp -= 2 * PAGESIZE; /* i think this is FRAMESIZE according to specs */
     new_pcb->p_s.pc_epc = new_pcb->p_s.reg_t9  = (memaddr) test;
     insertProcQ(&readyQueue, new_pcb);
     processCount++;
 
+    /* Call the scheduler */
     scheduler();
     return 0;
 }

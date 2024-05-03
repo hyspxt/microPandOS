@@ -30,9 +30,9 @@ void scheduler()
         }
         else if (processCount > 1 && softBlockCount > 0)
         {
-            /* Enter Wait State, waiting for a device interrupts*/
-            current_process = NULL;
+            /* Enter Wait State, waiting for a device interrupts */
             /* should enable interrupts and disable plt */
+            current_process = NULL;
             setSTATUS(ALLOFF | IMON | IECON);
             WAIT();
         }

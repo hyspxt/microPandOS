@@ -14,7 +14,7 @@ void PLTHandler(state_t *excState)
     /* According to uMPS3 - pops 4.1.4: PLT interrupts are always on interrupt line 1 and
     they acknowledged by writing a new value into the CP0 Timer register */
     setPLT(0);
-    updateCPUTime(current_process);
+    updatePCBTime(current_process);
     stateCpy(&current_process->p_s, excState);
     insertProcQ(&readyQueue, current_process);
     scheduler();
