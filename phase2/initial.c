@@ -17,7 +17,6 @@ struct list_head pseudoClockQueue;
 
 pcb_PTR ssi_pcb, new_pcb;
 
-
 void uTLB_RefillHandler()
 {
     setENTRYHI(0x80000000);
@@ -79,7 +78,6 @@ int main()
     mkEmptyProcQ(&blockedTerminalRecvQueue);
       /* queue of waiting PCBs that requested a WaitForClock service to the SSI */
     mkEmptyProcQ(&pseudoClockQueue);
-
 
     /* Load system-wide interval timer with 100000 ms */
     LDIT(PSECOND); 

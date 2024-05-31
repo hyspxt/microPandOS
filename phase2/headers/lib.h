@@ -45,6 +45,7 @@ unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
 void terminateProcess(pcb_PTR);
 void doio(ssi_do_io_PTR, pcb_PTR);
+void insertDeviceQ(unsigned int, pcb_PTR);
 void wait4Clock(pcb_PTR);
 unsigned int getSupportData(pcb_PTR);
 unsigned int getProcessID(pcb_PTR, pcb_PTR);
@@ -61,11 +62,15 @@ void recv(unsigned int, unsigned int, state_t *);
 void passUpOrDie(state_t *, unsigned int);
 
 /* interrupt module */
-void interruptHandler(state_t *, unsigned int);
-void PLTHandler(state_t *);
-void intervalTimerHandler(state_t *);
-void deviceHandler(unsigned int, state_t *, unsigned int);
-pcb_PTR unblockByDeviceNumber(unsigned int, struct list_head *);
+void interruptHandler(unsigned int);
+void PLTHandler();
+void intervalTimerHandler();
+unsigned int getDeviceBitmap(unsigned int);
+unsigned int getDeviceNo(unsigned int);
+void deviceHandler(unsigned int);
+pcb_PTR unblockPcbDevNo(unsigned int, struct list_head *);
+pcb_PTR getPcbFromLine(unsigned int, unsigned int);
+
 
 /* scheduler module */
 void scheduler();

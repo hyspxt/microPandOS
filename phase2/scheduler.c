@@ -1,15 +1,14 @@
 #include "./headers/lib.h"
 
 /**
- * @brief The nuceleus scheduler. The implementation is pre-emptive round robin algorithm with a time slice of 5ms.
- *        Its main goal is to dispatch the next process in the readyQueue.
+ * @brief The nuceleus scheduler. The implementation is pre-emptive round robin algorithm with 
+ *        a time slice of 5ms. Its main goal is to dispatch the next process in the readyQueue.
  *
  * @param void
  * @return void
  */
 void scheduler()
 {
-    
     if (!emptyProcQ(&readyQueue))
     {
         /* The ready queue is not empty */
@@ -29,8 +28,7 @@ void scheduler()
             PANIC(); /* Deadlock situation, invoke PANIC BIOS service/instruction. */
         }
         else if (processCount > 1 && softBlockCount > 0)
-        {
-            /* Enter Wait State, waiting for a device interrupts */
+        {/* Enter Wait State, waiting for a device interrupts */
             /* should enable interrupts and disable plt */
             current_process = NULL;
             setSTATUS(ALLOFF | IMON | IECON);

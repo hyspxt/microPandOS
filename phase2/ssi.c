@@ -17,7 +17,7 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 		return NOPROC;
 	child->p_supportStruct = sup->support;
 
-	/* copy the state sent along with the request in the 
+	/* copy the state sent along with the request in the
 		new child pcb and insert the newborn the readyQueue*/
 	stateCpy(sup->state, &child->p_s);
 	insertProcQ(&readyQueue, child);
@@ -26,9 +26,8 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 	return (unsigned int)child;
 }
 
-
 /**
- * @brief Terminates/kill a process. If the process is the one that requested the service, then the process is terminated.
+ * @brief Kill a process. If the process is the one that requested the service, then the process is terminated.
  * 		  When a process is terminated, in addiction, all his progeny (children) must be terminated too.
  * 		  The service is associated with the mnemonic constant TERMPROCESS = 2.
  *
@@ -46,6 +45,25 @@ void terminateProcess(pcb_PTR sender)
 	outChild(sender);
 	freePcb(sender);
 	processCount--;
+}
+
+void insertDeviceQ(unsigned int interruptLine, pcb_PTR sender)
+{
+	switch (interruptLine)
+	{ /* Followwing interrupt priority on non-terminal devices */
+	case IL_DISK:
+		insertProcQ(&blockedDiskQueue, sender);
+		break;
+	case IL_FLASH:
+		insertProcQ(&blockedFlashQueue, sender);
+		break;
+	case IL_ETHERNET:
+		insertProcQ(&blockedEthernetQueue, sender);
+		break;
+	case IL_PRINTER:
+		insertProcQ(&blockedPrinterQueue, sender);
+		break;
+	}
 }
 
 /**
@@ -68,53 +86,38 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 	   so, we iter on those basing on their identifiers.
 	   According to uMPS3 - Principles of Operation p.29 devices have interrupts pending on interrupt lines 3-7.
 	   That means that when bit i in word j is set to one, then device i attached to interrupt line j + 3 has a pending interrupt. */
-	for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++)
-	{
-		/* calculate the address for this device's device register */
-		termreg_t *devAddrBase = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, devNo);
-		if ((memaddr)&devAddrBase->transm_command == deviceCommand)
-		{
-			sender->blockedOnDevice = devNo;
-			outProcQ(&readyQueue, sender);
-			insertProcQ(&blockedTerminalTransmQueue, sender);
-			devNo = N_DEV_PER_IL;
-		}
-		else if ((memaddr)&devAddrBase->recv_command == deviceCommand)
-		{
-			sender->blockedOnDevice = devNo;
-			outProcQ(&readyQueue, sender);
-			insertProcQ(&blockedTerminalRecvQueue, sender);
-			devNo = N_DEV_PER_IL;
-		}
-	}
-
 	for (unsigned int interruptLine = DEV_IL_START; interruptLine < N_INTERRUPT_LINES; interruptLine++)
 	{
 		for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++)
 		{
-			/* calculate the address for this device's device register */
-			devreg_t *devAddrBase = (devreg_t *)DEV_REG_ADDR(interruptLine, devNo);
-			if ((memaddr)&devAddrBase->dtp.command == deviceCommand)
-			{
-				sender->blockedOnDevice = devNo;
-				outProcQ(&readyQueue, sender);
-				switch (interruptLine)
+			if (interruptLine == IL_TERMINAL)
+			{ /* calculate the address for this device's device register */
+				termreg_t *devAddrBase = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, devNo);
+				if ((memaddr)&devAddrBase->transm_command == deviceCommand)
 				{
-				case IL_DISK:
-					insertProcQ(&blockedDiskQueue, sender);
-					break;
-				case IL_FLASH:
-					insertProcQ(&blockedFlashQueue, sender);
-					break;
-				case IL_ETHERNET:
-					insertProcQ(&blockedEthernetQueue, sender);
-					break;
-				case IL_PRINTER:
-					insertProcQ(&blockedPrinterQueue, sender);
+					sender->blockedOnDevice = devNo;
+					outProcQ(&readyQueue, sender);
+					insertProcQ(&blockedTerminalTransmQueue, sender);
 					break;
 				}
-				devNo = N_DEV_PER_IL;
-				interruptLine = N_INTERRUPT_LINES;
+				else if ((memaddr)&devAddrBase->recv_command == deviceCommand)
+				{
+					sender->blockedOnDevice = devNo;
+					outProcQ(&readyQueue, sender);
+					insertProcQ(&blockedTerminalRecvQueue, sender);
+					break;
+				}
+			}
+			else
+			{  /* calculate base address for non-terminal devices */
+				devreg_t *devAddrBase = (devreg_t *)DEV_REG_ADDR(interruptLine, devNo);
+				if ((memaddr)&devAddrBase->dtp.command == deviceCommand)
+				{
+					sender->blockedOnDevice = devNo;
+					outProcQ(&readyQueue, sender);
+					insertDeviceQ(interruptLine, sender);
+					break;
+				}
 			}
 		}
 	}
@@ -145,7 +148,6 @@ unsigned int getTOD()
 	return (STCK(TOD_LOAD));
 }
 
-
 /**
  * @brief Update the time of PCB that requested the service.
  * 		  Start is called when the process is dispatched, while updatePCBTime is called when the process is preempted.
@@ -161,10 +163,10 @@ void updatePCBTime(pcb_PTR sender)
 }
 
 /**
- * @brief Set the value in Processor Local Timer as described at 
+ * @brief Set the value in Processor Local Timer as described at
  * 		  p.22 of uMPS3 - Principles of Operation.
  *
- * @param time the time to set the timer
+ * @param time number of ticks to load in the timer
  * @return void
  */
 void setPLT(unsigned int time)
@@ -186,15 +188,15 @@ void wait4Clock(pcb_PTR sender)
 }
 
 /**
- * @brief Allow the sender to get to obtain the process Support Structure.
- * 		  The support structure is a data structure that contains the information needed by the SSI to perform the service requested by the process.
+ * @brief Allow the sender to obtain the process' Support Structure.
+ * 		  The support structure is a data structure that contains the information
+ *        needed by the SSI to perform the service requested by the process.
  *
  * @param sender the process that requested the service
  * @return void
  */
 unsigned int getSupportData(pcb_PTR sender)
 {
-	/* The support structure is a data structure that contains the information needed by the SSI to perform the service requested by the process. */
 	return (unsigned int)sender->p_supportStruct;
 }
 
@@ -226,11 +228,11 @@ void SSILoop()
 	{
 		unsigned int *senderAddr, result;
 		pcb_PTR payload;
-		
+
 		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
 		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
-		The idea behind using this system comes from the statement: "SSI request should be implemented using SYSCALLs and message passing" in specs. */
+		SSI request should be implemented using SYSCALLs and message passing in specs. */
 		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
 
 		if (result != NOPROC)
@@ -241,7 +243,8 @@ void SSILoop()
 }
 
 /**
- * @brief Handles the SSI requests during SSILoop.
+ * @brief Handles the SSI requests during SSILoo, dispatching the actual service called
+ * 		  and returning the address of the eventual process.
  *
  * @param sender the process that requested the service
  * @param payload the payload of the message
@@ -250,26 +253,23 @@ void SSILoop()
 unsigned int SSIRequest(pcb_PTR sender, ssi_payload_t *payload)
 {
 	unsigned int res = 0;
-	switch (payload->service_code)
+	unsigned int code = payload->service_code;
+	switch (code)
 	{
 	case CREATEPROCESS:
 		if (emptyProcQ(&pcbFree_h))
-		{
 			res = NOPROC;
-		}
 		else
-		{
-			res = (unsigned int)createProcess((ssi_create_process_PTR)payload->arg, sender);
-		}
+			res = createProcess((ssi_create_process_PTR)payload->arg, sender);
 		break;
 	case TERMPROCESS:
 		if (payload->arg == NULL)
-		{ // if the argument is NULL, then the process that requested the service must be terminated
+		{ /* if the argument is NULL, then the process that requested the service must be terminated */
 			terminateProcess(sender);
 			res = NOPROC;
 		}
 		else
-		{
+		{ /* this case suggest that the process is correctly killed */
 			terminateProcess(payload->arg);
 			res = 0;
 		}
@@ -292,8 +292,8 @@ unsigned int SSIRequest(pcb_PTR sender, ssi_payload_t *payload)
 		res = getProcessID(sender, payload->arg);
 		break;
 	default:
-		res = MSGNOGOOD;
 		terminateProcess(sender);
+		res = MSGNOGOOD;
 		break;
 	}
 	return res;

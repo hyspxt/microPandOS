@@ -170,7 +170,7 @@ void exceptionHandler()
     {
     case IOINTERRUPTS:
         /* Interrupts */
-        interruptHandler(EXCEPTION_STATE, cause);
+        interruptHandler(cause);
         break;
     case 1 ... TLBINVLDS:
         /* TLB exceptions */
