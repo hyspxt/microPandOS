@@ -46,11 +46,7 @@ void intervalTimerHandler()
         softBlockCount--;
         awknPcb = removeProcQ(&pseudoClockQueue);
     }
-
-    if (current_process != NULL)
-        LDST(EXCEPTION_STATE);
-    else
-        scheduler();
+    exitInterruptHandler();
 }
 
 /**
@@ -119,6 +115,20 @@ pcb_PTR getPcbFromLine(unsigned int interruptLine, unsigned int devNo)
 }
 
 /**
+ * @brief Exit from the interrupt handler and calling the scheduler.
+ *
+ * @return void
+ */
+void exitInterruptHandler()
+{
+    setSTATUS(getSTATUS() | TEBITON); // enable PLT
+    if (current_process != NULL)
+        LDST(EXCEPTION_STATE);
+    else
+        scheduler();
+}
+
+/**
  * @brief Calculate the interrupt line, corresponding subdevice and send ack to the device.
  *
  * @param interruptLine the device line on which the interrupt is triggered
@@ -140,7 +150,7 @@ void deviceHandler(unsigned int interruptLine)
         /* According to pops section 5.7 p.42, status code 5 for both recv_status and trasm_status
         imply a successful operation on the device.*/
         if ((unsigned char)termReg->transm_status == OKCHARTRANS)
-        { /* unsigned char allow us to retrieve the last byte of the status*/
+        { /* unsigned char allow us to retrieve the last byte of the status, transm case*/
             outPcb = unblockPcbDevNo(devNo, &blockedTerminalTransmQueue);
             devStatus = termReg->transm_status;
             termReg->transm_command = ACK;
@@ -173,35 +183,32 @@ void deviceHandler(unsigned int interruptLine)
         insertProcQ(&readyQueue, outPcb);
         softBlockCount--;
     }
-
-    if (current_process != NULL)
-        LDST(EXCEPTION_STATE);
-    else
-        scheduler();
+    exitInterruptHandler();
 }
 
 /**
  * @brief Handles the various interrupts in order of priority 1 to 7.
  *
- * @param excState the state of the processor
- * @param cause the cause of the interrupt
  * @return void
  */
-void interruptHandler(unsigned int cause)
+void interruptHandler()
 { /* we can ignore IL_IPI (Inter-Processor interrupts) since microPandOs is intended
     for uniprocessor environments more info on chapter 5 pops. */
-    if (CAUSE_IP_GET(cause, IL_CPUTIMER))
+    unsigned int bitmask = EXCEPTION_STATE->cause & CAUSE_IP_MASK;
+    setSTATUS(getSTATUS() & ~TEBITON); /* we disable PLT since it should not proceed in interrupt handling*/
+    /* checking which interrupt service should be provided */
+    if (LOCALTIMERINT & bitmask)
         PLTHandler();
-    else if (CAUSE_IP_GET(cause, IL_TIMER))
+    else if (TIMERINTERRUPT & bitmask)
         intervalTimerHandler();
-    else if (CAUSE_IP_GET(cause, IL_DISK)) /* from here, interrupt devices*/
+    else if (DISKINTERRUPT & bitmask) /* from here, interrupt devices*/
         deviceHandler(IL_DISK);
-    else if (CAUSE_IP_GET(cause, IL_FLASH))
+    else if (FLASHINTERRUPT & bitmask)
         deviceHandler(IL_FLASH);
-    else if (CAUSE_IP_GET(cause, IL_ETHERNET))
+    else if (NETWORKINTERRUPT & bitmask)
         deviceHandler(IL_ETHERNET);
-    else if (CAUSE_IP_GET(cause, IL_PRINTER))
+    else if (PRINTINTERRUPT & bitmask)
         deviceHandler(IL_PRINTER);
-    else if (CAUSE_IP_GET(cause, IL_TERMINAL))
+    else if (TERMINTERRUPT & bitmask)
         deviceHandler(IL_TERMINAL);
 }

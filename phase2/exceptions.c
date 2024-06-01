@@ -25,9 +25,9 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *
     msg->m_sender = senderptr;
     msg->m_payload = payload;
 
-    if (searchPCB(destptr, &pcbFree_h))
+    if (searchProcQ(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
-    else if ((destptr != current_process) && !searchPCB(destptr, &readyQueue))
+    else if ((destptr != current_process) && !searchProcQ(destptr, &readyQueue))
     { /* if dest was waiting for a message, we awaken it*/
         insertProcQ(&readyQueue, destptr);
     }
@@ -41,7 +41,6 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload, state_t *
  *        If the process find no message, it is put in the waiting queue by calling the scheduler.
  *        After the message is received, it is loaded the new state.
  *        After the recv, in v0 there will be the sender address and in a2 the payload.
- *
  *
  * @param sender the sender PCB address
  * @param payload the memory area in which the payload will be stored
@@ -59,7 +58,7 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
     else
         msg = popMessage(&current_process->msg_inbox, senderptr);
 
-    if (msg == NULL) 
+    if (msg == NULL)
     { /* so there aren't any message in the inbox, we should put it in waiting state */
         stateCpy(excState, &current_process->p_s);
         updatePCBTime(current_process);
@@ -67,15 +66,13 @@ void recv(unsigned int sender, unsigned int payload, state_t *excState)
     }
     else
     { /* putting sender address in v0 register as returning value of recv */
-        excState->reg_v0 = (memaddr)msg->m_sender;
+        excState->reg_v0 = (unsigned int)msg->m_sender;
         if (msg->m_payload != 0)
-        {
+        {  /* we check if the payload should be ignored */
             unsigned int *recvd = (unsigned int *)payload;
             *recvd = msg->m_payload;
         }
         freeMsg(msg);
-        excState->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
-        LDST(excState);
     }
 }
 
@@ -96,9 +93,9 @@ void syscallHandler(state_t *excState)
     /* We check if the process is in kernel mode looking up at the bit 1 (of 31) of the status register:
     if is 0, then is in Kernel mode, else it's in user mode. MAXPAGE is the size of the cause register */
     if ((excState->status << (MAXPAGES - 2)) >> (MAXPAGES - 1))
-    {/* We check if that PCB in user-mode checking the status
-        in which case, should trigger a Program Trap (PassUp or Die) exception response and the subsequent handler.
-        According to princOfOperations, Reserved instruction should be code 10. */
+    { /* We check if that PCB in user-mode checking the status
+         in which case, should trigger a Program Trap (PassUp or Die) exception response and the subsequent handler.
+         According to princOfOperations, Reserved instruction should be code 10. */
         excState->cause = ((excState->cause) & CLEAREXECCODE) | (PRIVINSTR << CAUSESHIFT);
         passUpOrDie(excState, GENERALEXCEPT);
     }
@@ -114,6 +111,8 @@ void syscallHandler(state_t *excState)
             break;
         case RECEIVEMESSAGE:
             recv(excState->reg_a1, excState->reg_a2, excState);
+            excState->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
+            LDST(excState);
             break;
         default: /* in case the code retrieved from v0 register isn't valid, trap vector*/
             passUpOrDie(excState, GENERALEXCEPT);
@@ -155,37 +154,30 @@ void passUpOrDie(state_t *excState, unsigned int excType)
  * @return void
  */
 void exceptionHandler()
-{
-    /* When the exception is raised, this function will be called (new stack), TLB-refill events excluded.
-    We can distinguish the type of exception by reading the cause in the processor state at the time of the exception.
-    In particular, that value will be at the start of BIOS data page. In advance, we assume that PCB is already set to kernel mode and have interrupts disabled. */
+{ /* When the exception is raised, this function will be called (new stack), TLB-refill events excluded.
+  We can distinguish the type of exception by reading the cause in the processor state at the time of the exception.
+  In particular, that value will be at the start of BIOS data page. In advance, we assume that PCB is already set to kernel mode and have interrupts disabled. */
     unsigned int cause = getCAUSE();
     /* according to uMPS3: Principles of Operation:
     cause is a 32bit register which bits 2-6 provides a code that identifies the type of exception that occurred.
     The bitwise operation (&) with GETEXECCODE will isolate the exception code from the cause register.
     Then, the right shift (>>) will move the bits to the right, in position 0-4, so that the exception code will be in the least significant bits. */
     unsigned int excCode = (cause & GETEXECCODE) >> CAUSESHIFT;
-
     switch (excCode)
     {
-    case IOINTERRUPTS:
-        /* Interrupts */
-        interruptHandler(cause);
+    case IOINTERRUPTS: /* Interrupts */
+        interruptHandler();
         break;
-    case 1 ... TLBINVLDS:
-        /* TLB exceptions */
+    case 1 ... TLBINVLDS: /* TLB exceptions */
         passUpOrDie(EXCEPTION_STATE, PGFAULTEXCEPT);
         break;
-    case 4 ... 7:
-        /* Program Traps */
+    case STARTPROGTRAPEXC ... STOPPROGTRAPEXC: /* Program Traps */
         passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
         break;
-    case SYSEXCEPTION:
-        /* System Calls (SYS1 or SYS2) */
+    case SYSEXCEPTION: /* System Calls (SYS1 or SYS2) */
         syscallHandler(EXCEPTION_STATE);
         break;
-    case BREAKEXCEPTION ... 12:
-        /* Program Traps */
+    case BREAKEXCEPTION ... ENDPROGTRAPEXC: /* Program Traps */
         passUpOrDie(EXCEPTION_STATE, GENERALEXCEPT);
         break;
     }

@@ -41,8 +41,9 @@ void uTLB_RefillHandler();
 
 /* ssi module*/
 void SSILoop();
-unsigned int SSIRequest(pcb_PTR, ssi_payload_t *);
+unsigned int SSIService(pcb_PTR, ssi_payload_t *);
 unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
+unsigned int isPcbBlockedOnDevice(pcb_PTR);
 void terminateProcess(pcb_PTR);
 void doio(ssi_do_io_PTR, pcb_PTR);
 void insertDeviceQ(unsigned int, pcb_PTR);
@@ -62,7 +63,7 @@ void recv(unsigned int, unsigned int, state_t *);
 void passUpOrDie(state_t *, unsigned int);
 
 /* interrupt module */
-void interruptHandler(unsigned int);
+void interruptHandler();
 void PLTHandler();
 void intervalTimerHandler();
 unsigned int getDeviceBitmap(unsigned int);
@@ -70,12 +71,13 @@ unsigned int getDeviceNo(unsigned int);
 void deviceHandler(unsigned int);
 pcb_PTR unblockPcbDevNo(unsigned int, struct list_head *);
 pcb_PTR getPcbFromLine(unsigned int, unsigned int);
+void exitInterruptHandler();
 
 
 /* scheduler module */
 void scheduler();
 
 /* miscellaneous  */
-unsigned int searchPCB(pcb_PTR, struct list_head *);
+unsigned int searchProcQ(pcb_PTR, struct list_head *);
 
 #endif

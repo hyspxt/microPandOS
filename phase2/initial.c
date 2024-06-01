@@ -14,7 +14,6 @@ struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, bloc
 struct list_head blockedTerminalTransmQueue, blockedTerminalRecvQueue;
 /* Queue of PCBs that are waiting for a WaitForClock service */
 struct list_head pseudoClockQueue;
-
 pcb_PTR ssi_pcb, new_pcb;
 
 void uTLB_RefillHandler()
@@ -44,14 +43,13 @@ void stateCpy(state_t *src, state_t *dest){
 
 /**
  * @brief This module contains the microPandOS entry point, that is the Nucleus initialization.
- *        after the initialization, the Nucleus will call the scheduler.
+ *        After the initialization, the Nucleus will call the scheduler.
  *          
  * @param void
  * @return int
  */
 int main()
-{
-    /* Here we should populate the processor 0 - Pass Up Vector */
+{ /* Here we should populate the processor 0 - Pass Up Vector */
     passupvector_t *pUV = (passupvector_t *)PASSUPVECTOR;
     pUV->tlb_refill_handler = (memaddr)uTLB_RefillHandler;
     pUV->tlb_refill_stackPtr = (memaddr)KERNELSTACK;

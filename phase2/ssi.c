@@ -1,6 +1,4 @@
 #include "./headers/lib.h"
-pcb_PTR pcbIO;
-
 /*
  * @brief Creates a child process of the parent process. Then, the child process is inserted in the ready queue
  * 		  and the address of the child is returned in order to be the ssi response to a certain ssi request from
@@ -20,10 +18,24 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 	/* copy the state sent along with the request in the
 		new child pcb and insert the newborn the readyQueue*/
 	stateCpy(sup->state, &child->p_s);
-	insertProcQ(&readyQueue, child);
 	insertChild(parent, child);
+	insertProcQ(&readyQueue, child);
 	processCount++;
 	return (unsigned int)child;
+}
+
+/**
+ * @brief Check if the PCB is blocked on a device, looking at all device queues.
+ *
+ * @param pcb the process control block
+ * @return unsigned int 1 if the PCB is blocked on a device, 0 otherwise
+ */
+unsigned int isPcbBlockedOnDevice(pcb_PTR sender)
+{
+	return (outProcQ(&blockedTerminalRecvQueue, sender) != NULL || outProcQ(&blockedTerminalTransmQueue, sender) != NULL ||
+			outProcQ(&blockedDiskQueue, sender) != NULL || outProcQ(&blockedFlashQueue, sender) != NULL ||
+			outProcQ(&blockedEthernetQueue, sender) != NULL || outProcQ(&blockedPrinterQueue, sender) != NULL ||
+			outProcQ(&pseudoClockQueue, sender) != NULL);
 }
 
 /**
@@ -42,6 +54,10 @@ void terminateProcess(pcb_PTR sender)
 	{
 		terminateProcess(removeChild(sender));
 	}
+
+	if (isPcbBlockedOnDevice(sender))
+		softBlockCount--;
+
 	outChild(sender);
 	freePcb(sender);
 	processCount--;
@@ -76,9 +92,8 @@ void insertDeviceQ(unsigned int interruptLine, pcb_PTR sender)
 void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 {
 	softBlockCount++;
-	/* if a process request the DOIO service, it must be blocked on the correct device */
 	unsigned int deviceCommand = (memaddr)doioPTR->commandAddr;
-	/* We need to distinguish betweeen terminal and not-terminal devices, that are transm and recv
+	/* We need to distinguish between terminal and not-terminal devices, that are transm and recv
 	so, according to uMPS3 - Principles of Operation, each device is identified by the interrupt line
 	it is attached to and its device number, an integer in the range 0-7. Important! in order of priority */
 
@@ -93,14 +108,14 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 			if (interruptLine == IL_TERMINAL)
 			{ /* calculate the address for this device's device register */
 				termreg_t *devAddrBase = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, devNo);
-				if ((memaddr)&devAddrBase->transm_command == deviceCommand)
+				if ((unsigned int)&devAddrBase->transm_command == deviceCommand)
 				{
 					sender->blockedOnDevice = devNo;
 					outProcQ(&readyQueue, sender);
 					insertProcQ(&blockedTerminalTransmQueue, sender);
 					break;
 				}
-				else if ((memaddr)&devAddrBase->recv_command == deviceCommand)
+				else if ((unsigned int)&devAddrBase->recv_command == deviceCommand)
 				{
 					sender->blockedOnDevice = devNo;
 					outProcQ(&readyQueue, sender);
@@ -109,9 +124,9 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 				}
 			}
 			else
-			{  /* calculate base address for non-terminal devices */
+			{ /* calculate base address for non-terminal devices */
 				devreg_t *devAddrBase = (devreg_t *)DEV_REG_ADDR(interruptLine, devNo);
-				if ((memaddr)&devAddrBase->dtp.command == deviceCommand)
+				if ((unsigned int)&devAddrBase->dtp.command == deviceCommand)
 				{
 					sender->blockedOnDevice = devNo;
 					outProcQ(&readyQueue, sender);
@@ -150,7 +165,9 @@ unsigned int getTOD()
 
 /**
  * @brief Update the time of PCB that requested the service.
- * 		  Start is called when the process is dispatched, while updatePCBTime is called when the process is preempted.
+ * 		  Start is called when the process is dispatched, while updatePCBTime
+ * 		  is called when the process is preempted.
+ *        note. ndr an alternative way to do this could be disabling PLT
  *
  * @param sender the process that requested the service
  * @return void
@@ -223,8 +240,8 @@ unsigned int getProcessID(pcb_PTR sender, pcb_PTR arg)
  * @return void
  */
 void SSILoop()
-{
-	while (TRUE)
+{ /* The idea is that this process constantly listens to requests, and then it responds */
+	while (1)
 	{
 		unsigned int *senderAddr, result;
 		pcb_PTR payload;
@@ -233,10 +250,9 @@ void SSILoop()
 		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		SSI request should be implemented using SYSCALLs and message passing in specs. */
-		result = SSIRequest((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
-
+		result = SSIService((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
 		if (result != NOPROC)
-		{
+		{ /* everything went fine, so we obtained the result of the request, now send it back*/
 			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
 		}
 	}
@@ -250,9 +266,9 @@ void SSILoop()
  * @param payload the payload of the message
  * @return unsigned int the result of the service
  */
-unsigned int SSIRequest(pcb_PTR sender, ssi_payload_t *payload)
+unsigned int SSIService(pcb_PTR sender, ssi_payload_t *payload)
 {
-	unsigned int res = 0;
+	unsigned int res = OFF;
 	unsigned int code = payload->service_code;
 	switch (code)
 	{
@@ -268,11 +284,8 @@ unsigned int SSIRequest(pcb_PTR sender, ssi_payload_t *payload)
 			terminateProcess(sender);
 			res = NOPROC;
 		}
-		else
-		{ /* this case suggest that the process is correctly killed */
+		else /* this case suggest that the process is correctly killed */
 			terminateProcess(payload->arg);
-			res = 0;
-		}
 		break;
 	case DOIO:
 		doio(payload->arg, sender);
