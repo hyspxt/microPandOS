@@ -15,9 +15,6 @@
  *          Modified by Luca Bassi, Gabriele Genovese on November 30, 2023
  */
 
-#ifndef TEST
-#define TEST
-
 #include "../headers/const.h"
 #include "../headers/types.h"
 #include <umps/libumps.h>
@@ -82,7 +79,6 @@ void child2(), p8(), p8leaf1(), p8leaf2(), p8leaf3(), p8leaf4(), p9(), p10(), hp
 extern pcb_t *ssi_pcb;
 extern pcb_t *current_process;
 extern int process_count;
-
 pcb_PTR test_pcb, print_pcb, p2_pcb, p3_pcb, p4_pcb_v1, p4_pcb_v2, p5_pcb, p6_pcb, p7_pcb, p8_pcb, p8root_pcb,
     child1_pcb, child2_pcb, gchild1_pcb, gchild2_pcb, gchild3_pcb, gchild4_pcb, p9_pcb, p10_pcb;
 
@@ -312,7 +308,7 @@ void test()
     else
         print_term0("p1 knows p2 ended\n");
 
-    /* create p3phase1 */
+    /* create p3 */
     p3_pcb = create_process(&p3state);
     p3pid = p3_pcb->p_pid;
 
@@ -370,7 +366,7 @@ void test()
     /* start p7 */
     p7_pcb = create_process(&p7state);
     SYSCALL(SENDMESSAGE, (unsigned int)p7_pcb, START, 0);
-    
+
     /* start p8 */
     p8_pcb = create_process(&p8state);
     SYSCALL(SENDMESSAGE, (unsigned int)p8_pcb, START, 0);
@@ -929,5 +925,3 @@ void hp_p2()
     print_term0("ERROR: hp_p2 didn't die!\n");
     PANIC();
 }
-
-#endif

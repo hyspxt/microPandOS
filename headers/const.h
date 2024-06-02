@@ -196,4 +196,11 @@
 /* Inizio indirizzo di device registers */
 #define START_DEVREG		0x10000054
 
+/* Custom added constants */
+#define NETWORKINTERRUPT 0x00002000
+#define CAUSEREGSIZE 32
+#define STARTPROGTRAPEXC 4
+#define STOPPROGTRAPEXC 7
+#define ENDPROGTRAPEXC 12
+
 #endif

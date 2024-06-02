@@ -1,17 +1,20 @@
 #include "./headers/lib.h"
 
 pcb_PTR current_process;
-unsigned int processCount, softBlockCount;
+unsigned int processCount;
+/* counter of processes blocked for any reasons, allow the scheduler to track deadlock and wait4clock situation */
+unsigned int softBlockCount;
 unsigned int startTOD;
 
-/* Queue of PCBs that are in READY state. It is a tail pointer. */
+/* Queue of PCBs that are in READY state */
 struct list_head readyQueue;
-
-struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue, blockedTerminalTransmQueue, blockedTerminalRecvQueue;
+/* Queues of PCBs that are blocked in terminal devices */
+struct list_head blockedDiskQueue, blockedFlashQueue, blockedEthernetQueue, blockedPrinterQueue;
+/* Queues of PCBs that are blocked in non-terminal device, transm or recv*/
+struct list_head blockedTerminalTransmQueue, blockedTerminalRecvQueue;
+/* Queue of PCBs that are waiting for a WaitForClock service */
 struct list_head pseudoClockQueue;
-
-pcb_PTR ssi_pcb, new_pcb;;
-extern void test();
+pcb_PTR ssi_pcb, new_pcb;
 
 void uTLB_RefillHandler()
 {
@@ -40,14 +43,13 @@ void stateCpy(state_t *src, state_t *dest){
 
 /**
  * @brief This module contains the microPandOS entry point, that is the Nucleus initialization.
- *        after the initialization, the Nucleus will call the scheduler.
+ *        After the initialization, the Nucleus will call the scheduler.
  *          
  * @param void
  * @return int
  */
 int main()
-{
-    /* Here we should populate the processor 0 - Pass Up Vector */
+{ /* Here we should populate the processor 0 - Pass Up Vector */
     passupvector_t *pUV = (passupvector_t *)PASSUPVECTOR;
     pUV->tlb_refill_handler = (memaddr)uTLB_RefillHandler;
     pUV->tlb_refill_stackPtr = (memaddr)KERNELSTACK;
@@ -75,41 +77,38 @@ int main()
       /* queue of waiting PCBs that requested a WaitForClock service to the SSI */
     mkEmptyProcQ(&pseudoClockQueue);
 
-
     /* Load system-wide interval timer with 100000 ms */
     LDIT(PSECOND); 
 
-    /* Instantiate the first PCB, the SSI 
+    /* Instantiate the first PCB, the SSI with pid 1
          This one need to have interrupts enabled, kernel-mode on, the SP set to RAMTOP 
          and the PC set to the address of the SSI_function_entry_point */
     ssi_pcb = NULL;
     ssi_pcb = allocPcb();
-    ssi_pcb->p_pid = 1;
 
     /* IEc -> represents the CURRENT interrupt enable bit 
        KUc > represents the CURRENT state of Kernel/User mode
     It is important to mention that to setting up a new processor state, we should set 
-    PREVIOUS bits and not CURRENT ones (so basically, IEp and KUp counterparts).
-    */
-    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON; // kernel mode is by default when KUc = 0
+    PREVIOUS bits and not CURRENT ones (so basically, IEp and KUp counterparts). */
+    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; /* kernel mode is by default when KUc = 0 */
     RAMTOP(ssi_pcb->p_s.reg_sp);
     ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) SSILoop;
     insertProcQ(&readyQueue, ssi_pcb);
     processCount++;
     
-    /* Instantiate the test PCB,
+    /* Instantiate the test PCB, with pid 2
         This one need to have interrupts enabled, processor local-timer enabled, the SP set to RAMTOP 
         and the PC set to the address of test */
     new_pcb = NULL;
     new_pcb = allocPcb();
-    new_pcb->p_pid = 2;
-    new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
+    new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; /* Interrupts enabled, PLT enabled */
     RAMTOP(new_pcb->p_s.reg_sp);
-    new_pcb->p_s.reg_sp -= 2 * PAGESIZE; // FRAMESIZE according to specs??
+    new_pcb->p_s.reg_sp -= 2 * PAGESIZE; /* i think this is FRAMESIZE according to specs */
     new_pcb->p_s.pc_epc = new_pcb->p_s.reg_t9  = (memaddr) test;
     insertProcQ(&readyQueue, new_pcb);
     processCount++;
 
+    /* Call the scheduler */
     scheduler();
     return 0;
 }
