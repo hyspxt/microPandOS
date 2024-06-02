@@ -8,7 +8,7 @@
  * @param parent the parent process
  * @return int the address of the new process
  */
-unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
+unsigned int createProcess(pcb_PTR parent, ssi_create_process_PTR sup)
 {
 	pcb_PTR child = allocPcb();
 	if (child == NULL)
@@ -18,8 +18,8 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 	/* copy the state sent along with the request in the
 		new child pcb and insert the newborn the readyQueue*/
 	stateCpy(sup->state, &child->p_s);
-	insertChild(parent, child);
 	insertProcQ(&readyQueue, child);
+	insertChild(parent, child);
 	processCount++;
 	return (unsigned int)child;
 }
@@ -27,8 +27,8 @@ unsigned int createProcess(ssi_create_process_PTR sup, pcb_PTR parent)
 /**
  * @brief Check if the PCB is blocked on a device, looking at all device queues.
  *
- * @param pcb the process control block
- * @return unsigned int 1 if the PCB is blocked on a device, 0 otherwise
+ * @param sender the process control block
+ * @return 1 if the PCB is blocked on a device, 0 otherwise
  */
 unsigned int isPcbBlockedOnDevice(pcb_PTR sender)
 {
@@ -63,10 +63,17 @@ void terminateProcess(pcb_PTR sender)
 	processCount--;
 }
 
+/**
+ * @brief Insert the process in the curresponding device queue.
+ *
+ * @param interruptLine the interrupt line of the device
+ * @param sender the process that requested the service
+ * @return void
+ */
 void insertDeviceQ(unsigned int interruptLine, pcb_PTR sender)
 {
 	switch (interruptLine)
-	{ /* Followwing interrupt priority on non-terminal devices */
+	{ /* Following interrupt priority on non-terminal devices */
 	case IL_DISK:
 		insertProcQ(&blockedDiskQueue, sender);
 		break;
@@ -106,7 +113,7 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 		for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++)
 		{
 			if (interruptLine == IL_TERMINAL)
-			{ /* calculate the address for this device's device register */
+			{ /* calculate the address for this device's terminal device register */
 				termreg_t *devAddrBase = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, devNo);
 				if ((unsigned int)&devAddrBase->transm_command == deviceCommand)
 				{
@@ -125,8 +132,8 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 			}
 			else
 			{ /* calculate base address for non-terminal devices */
-				devreg_t *devAddrBase = (devreg_t *)DEV_REG_ADDR(interruptLine, devNo);
-				if ((unsigned int)&devAddrBase->dtp.command == deviceCommand)
+				dtpreg_t *devAddrBase = (dtpreg_t *)DEV_REG_ADDR(interruptLine, devNo);
+				if ((unsigned int)&devAddrBase->command == deviceCommand)
 				{
 					sender->blockedOnDevice = devNo;
 					outProcQ(&readyQueue, sender);
@@ -221,6 +228,7 @@ unsigned int getSupportData(pcb_PTR sender)
  * @brief Allow the sender to get the process ID of the process that requested the service.
  * 		  If arg is 0 return the sender's pid, or otherwise the sender's parent pid.
  * @param sender the process that requested the service
+ * @param arg the argument of the message
  * @return unsigned int the process ID
  */
 unsigned int getProcessID(pcb_PTR sender, pcb_PTR arg)
@@ -228,7 +236,63 @@ unsigned int getProcessID(pcb_PTR sender, pcb_PTR arg)
 	if (arg == NULL)
 		return sender->p_pid;
 	else
-		return sender->p_parent->p_pid;
+		return (sender->p_parent)->p_pid;
+}
+
+
+/**
+ * @brief Handles the SSI requests during SSILoo, dispatching the actual service called
+ * 		  and returning the address of the eventual process.
+ *
+ * @param sender the process that requested the service
+ * @param payload the payload of the message
+ * @param arg the argument of the message (not always needed)
+ * @return unsigned int the result of the service
+ */
+unsigned int SSIRequest(pcb_PTR sender, unsigned int service, void *arg)
+{
+	unsigned int res = OFF;
+	switch (service)
+	{
+	case CREATEPROCESS:
+		if (emptyProcQ(&pcbFree_h))
+			res = NOPROC;
+		else
+			res = createProcess(sender, (ssi_create_process_PTR)arg);
+		break;
+	case TERMPROCESS:
+		if (arg != NULL) /* this case suggest that the process sent as payload should be killed */
+			terminateProcess(arg);
+		else
+		{ /* if the argument is NULL, then the process that requested 
+			the service must be terminated */
+			terminateProcess(sender);
+			res = NOPROC;
+		}
+		break;
+	case DOIO:
+		doio(arg, sender);
+		res = NOPROC;
+		break;
+	case GETTIME:
+		res = getCPUTime(sender);
+		break;
+	case CLOCKWAIT:
+		wait4Clock(sender);
+		res = NOPROC;
+		break;
+	case GETSUPPORTPTR:
+		res = getSupportData(sender);
+		break;
+	case GETPROCESSID:
+		res = getProcessID(sender, arg);
+		break;
+	default:
+		terminateProcess(sender);
+		res = MSGNOGOOD;
+		break;
+	}
+	return res;
 }
 
 /**
@@ -250,64 +314,11 @@ void SSILoop()
 		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
 		/* When a process requires a SSI service it must wait for an answer, so we use the blocking synchronous recv
 		SSI request should be implemented using SYSCALLs and message passing in specs. */
-		result = SSIService((pcb_PTR)senderAddr, (ssi_payload_t *)payload);
+		ssi_payload_PTR ssipyld = (ssi_payload_PTR)payload;
+		result = SSIRequest((pcb_PTR)senderAddr, ssipyld->service_code, ssipyld->arg);
 		if (result != NOPROC)
 		{ /* everything went fine, so we obtained the result of the request, now send it back*/
 			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
 		}
 	}
-}
-
-/**
- * @brief Handles the SSI requests during SSILoo, dispatching the actual service called
- * 		  and returning the address of the eventual process.
- *
- * @param sender the process that requested the service
- * @param payload the payload of the message
- * @return unsigned int the result of the service
- */
-unsigned int SSIService(pcb_PTR sender, ssi_payload_t *payload)
-{
-	unsigned int res = OFF;
-	unsigned int code = payload->service_code;
-	switch (code)
-	{
-	case CREATEPROCESS:
-		if (emptyProcQ(&pcbFree_h))
-			res = NOPROC;
-		else
-			res = createProcess((ssi_create_process_PTR)payload->arg, sender);
-		break;
-	case TERMPROCESS:
-		if (payload->arg == NULL)
-		{ /* if the argument is NULL, then the process that requested the service must be terminated */
-			terminateProcess(sender);
-			res = NOPROC;
-		}
-		else /* this case suggest that the process is correctly killed */
-			terminateProcess(payload->arg);
-		break;
-	case DOIO:
-		doio(payload->arg, sender);
-		res = NOPROC;
-		break;
-	case GETTIME:
-		res = getCPUTime(sender);
-		break;
-	case CLOCKWAIT:
-		wait4Clock(sender);
-		res = NOPROC;
-		break;
-	case GETSUPPORTPTR:
-		res = getSupportData(sender);
-		break;
-	case GETPROCESSID:
-		res = getProcessID(sender, payload->arg);
-		break;
-	default:
-		terminateProcess(sender);
-		res = MSGNOGOOD;
-		break;
-	}
-	return res;
 }

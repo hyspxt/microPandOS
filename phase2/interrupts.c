@@ -93,8 +93,8 @@ unsigned int getDeviceNo(unsigned int mask)
 /**
  * @brief Get the PCB from the blocked queue corresponding to the interrupt line number.
  *
- * @param devNo the device number.
  * @param interruptLine the interrupt line.
+ * @param devNo the device number.
  * @return the PCB from the blocked queue.
  */
 pcb_PTR getPcbFromLine(unsigned int interruptLine, unsigned int devNo)
@@ -121,7 +121,7 @@ pcb_PTR getPcbFromLine(unsigned int interruptLine, unsigned int devNo)
  */
 void exitInterruptHandler()
 {
-    setSTATUS(getSTATUS() | TEBITON); // enable PLT
+    setSTATUS(getSTATUS() | TEBITON); /* enable PLT */
     if (current_process != NULL)
         LDST(EXCEPTION_STATE);
     else

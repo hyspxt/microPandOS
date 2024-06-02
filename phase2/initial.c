@@ -101,7 +101,7 @@ int main()
         and the PC set to the address of test */
     new_pcb = NULL;
     new_pcb = allocPcb();
-    new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; // Enable interrupts, set interrupt mask to all 1s, enable PLT 
+    new_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; /* Interrupts enabled, PLT enabled */
     RAMTOP(new_pcb->p_s.reg_sp);
     new_pcb->p_s.reg_sp -= 2 * PAGESIZE; /* i think this is FRAMESIZE according to specs */
     new_pcb->p_s.pc_epc = new_pcb->p_s.reg_t9  = (memaddr) test;

@@ -15,14 +15,9 @@
  *          Modified by Luca Bassi, Gabriele Genovese on November 30, 2023
  */
 
-#ifndef TEST
-#define TEST
-
 #include "../headers/const.h"
 #include "../headers/types.h"
 #include <umps/libumps.h>
-
-#include "./headers/lib.h"
 
 typedef unsigned int devregtr;
 
@@ -84,7 +79,6 @@ void child2(), p8(), p8leaf1(), p8leaf2(), p8leaf3(), p8leaf4(), p9(), p10(), hp
 extern pcb_t *ssi_pcb;
 extern pcb_t *current_process;
 extern int process_count;
-
 pcb_PTR test_pcb, print_pcb, p2_pcb, p3_pcb, p4_pcb_v1, p4_pcb_v2, p5_pcb, p6_pcb, p7_pcb, p8_pcb, p8root_pcb,
     child1_pcb, child2_pcb, gchild1_pcb, gchild2_pcb, gchild3_pcb, gchild4_pcb, p9_pcb, p10_pcb;
 
@@ -134,7 +128,7 @@ void print()
 
 void print_term0(char *s)
 {
-    SYSCALL(SENDMESSAGE, (unsigned int)print_pcb, (unsigned int)s, 0); // crasha su questa send
+    SYSCALL(SENDMESSAGE, (unsigned int)print_pcb, (unsigned int)s, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)print_pcb, 0, 0);
 }
 
@@ -314,7 +308,7 @@ void test()
     else
         print_term0("p1 knows p2 ended\n");
 
-    /* create p3phase1 */
+    /* create p3 */
     p3_pcb = create_process(&p3state);
     p3pid = p3_pcb->p_pid;
 
@@ -336,13 +330,8 @@ void test()
 
     print_term0("p1 knows p4's first incarnation ended\n");
 
-    klog_print("p4");
-
     // try to reach p4's second incarnation
     int reply = SYSCALL(SENDMESSAGE, (unsigned int)p4_pcb_v2, 0, 0);
-
-    klog_print("\n Reply: \n");
-    klog_print_dec(reply);
 
     if (reply == DEST_NOT_EXIST)
         print_term0("p1 knows p4's second incarnation ended\n");
@@ -936,5 +925,3 @@ void hp_p2()
     print_term0("ERROR: hp_p2 didn't die!\n");
     PANIC();
 }
-
-#endif

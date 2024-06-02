@@ -19,9 +19,8 @@ extern void klog_print_dec(unsigned int);
 
 /* -- VARIABLES -- */
 extern unsigned int processCount, softBlockCount;
-extern pcb_PTR current_process, pcbIO;
+extern pcb_PTR current_process;
 extern unsigned int startTOD;
-
 extern struct list_head readyQueue;
 
 /* we need one list of blocked pcb for every device, each one described in Section 5 in uMPS3 - Principles of Operation */
@@ -33,16 +32,16 @@ extern pcb_PTR ssi_pcb, new_pcb;
 extern void test();
 
 
-/* -- FUNCTIONS PROTOTYPE -- */
+/* -- FUNCTIONS PROTOTYPES -- */
 /* nucleus module */
 void stateCpy(state_t *, state_t *);
-void stateCPY4debug(state_t *, state_t *);
+// void stateCPY4debug(state_t *, state_t *); This contained a lot of klog_prints
 void uTLB_RefillHandler();
 
 /* ssi module*/
 void SSILoop();
-unsigned int SSIService(pcb_PTR, ssi_payload_t *);
-unsigned int createProcess(ssi_create_process_PTR, pcb_PTR);
+unsigned int SSIRequest(pcb_PTR, unsigned int, void*);
+unsigned int createProcess(pcb_PTR, ssi_create_process_PTR);
 unsigned int isPcbBlockedOnDevice(pcb_PTR);
 void terminateProcess(pcb_PTR);
 void doio(ssi_do_io_PTR, pcb_PTR);
@@ -57,10 +56,10 @@ void updatePCBTime(pcb_PTR);
 
 /* exception module*/
 void exceptionHandler();
-void syscallHandler(state_t *);
-int send(unsigned int, unsigned int, unsigned int, state_t *);
-void recv(unsigned int, unsigned int, state_t *);
-void passUpOrDie(state_t *, unsigned int);
+void syscallHandler();
+int send(unsigned int, unsigned int, unsigned int);
+void recv(unsigned int, unsigned int);
+void passUpOrDie(unsigned int);
 
 /* interrupt module */
 void interruptHandler();
@@ -73,11 +72,10 @@ pcb_PTR unblockPcbDevNo(unsigned int, struct list_head *);
 pcb_PTR getPcbFromLine(unsigned int, unsigned int);
 void exitInterruptHandler();
 
-
 /* scheduler module */
 void scheduler();
 
-/* miscellaneous  */
+/* misc */
 unsigned int searchProcQ(pcb_PTR, struct list_head *);
 
 #endif
