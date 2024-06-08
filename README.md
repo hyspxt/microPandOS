@@ -11,3 +11,5 @@
     ```sh
     make clean
     ``` 
+
+There is also a config example of the simulation machine (```fin```).

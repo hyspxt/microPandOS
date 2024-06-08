@@ -266,7 +266,7 @@ unsigned int searchProcQ(pcb_PTR p, struct list_head *list)
  * @param      struct list_head *list: pointer to the list where to search the pcb.
  * @return     pcb_PTR: pointer to the pcb that was unblocked, NULL if not found.
  */
-pcb_PTR unblockPcbDevNo(unsigned int devNo, struct list_head *list)
+pcb_PTR unlockPcbDevNo(unsigned int devNo, struct list_head *list)
 {
     pcb_PTR nPcb;
     list_for_each_entry(nPcb, list, p_list)

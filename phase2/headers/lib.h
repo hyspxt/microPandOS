@@ -31,7 +31,6 @@ extern struct list_head pcbFree_h;
 extern pcb_PTR ssi_pcb, new_pcb;
 extern void test();
 
-
 /* -- FUNCTIONS PROTOTYPES -- */
 /* nucleus module */
 void stateCpy(state_t *, state_t *);
@@ -39,7 +38,7 @@ void stateCpy(state_t *, state_t *);
 void uTLB_RefillHandler();
 
 /* ssi module*/
-void SSILoop();
+void SSI();
 unsigned int SSIRequest(pcb_PTR, unsigned int, void*);
 unsigned int createProcess(pcb_PTR, ssi_create_process_PTR);
 unsigned int isPcbBlockedOnDevice(pcb_PTR);
@@ -68,7 +67,8 @@ void intervalTimerHandler();
 unsigned int getDeviceBitmap(unsigned int);
 unsigned int getDeviceNo(unsigned int);
 void deviceHandler(unsigned int);
-pcb_PTR unblockPcbDevNo(unsigned int, struct list_head *);
+// void deviceHandler4DEBUG(unsigned int);
+pcb_PTR unlockPcbDevNo(unsigned int, struct list_head *); /* defined in pcb.c*/
 pcb_PTR getPcbFromLine(unsigned int, unsigned int);
 void exitInterruptHandler();
 

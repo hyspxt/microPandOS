@@ -46,6 +46,8 @@ void intervalTimerHandler()
         softBlockCount--;
         awknPcb = removeProcQ(&pseudoClockQueue);
     }
+    if (!emptyProcQ(&pseudoClockQueue))
+        PANIC();
     exitInterruptHandler();
 }
 
@@ -100,15 +102,15 @@ unsigned int getDeviceNo(unsigned int mask)
 pcb_PTR getPcbFromLine(unsigned int interruptLine, unsigned int devNo)
 {
     switch (interruptLine)
-    { /* exploiting fifoness */
+    {
     case IL_DISK:
-        return unblockPcbDevNo(devNo, &blockedDiskQueue);
+        return unlockPcbDevNo(devNo, &blockedDiskQueue);
     case IL_FLASH:
-        return unblockPcbDevNo(devNo, &blockedFlashQueue);
+        return unlockPcbDevNo(devNo, &blockedFlashQueue);
     case IL_ETHERNET:
-        return unblockPcbDevNo(devNo, &blockedEthernetQueue);
+        return unlockPcbDevNo(devNo, &blockedEthernetQueue);
     case IL_PRINTER:
-        return unblockPcbDevNo(devNo, &blockedPrinterQueue);
+        return unlockPcbDevNo(devNo, &blockedPrinterQueue);
     default:
         return NULL;
     }
@@ -136,7 +138,7 @@ void exitInterruptHandler()
  */
 void deviceHandler(unsigned int interruptLine)
 {
-    unsigned int devNo, mask, devStatus;
+    unsigned int devNo, mask, status;
     pcb_PTR outPcb;
 
     /* according to specs, use a switch and DEVxON costant to determine device number */
@@ -148,18 +150,18 @@ void deviceHandler(unsigned int interruptLine)
       we must distinguish between the two subdevices.*/
         termreg_t *termReg = (termreg_t *)DEV_REG_ADDR(interruptLine, devNo);
         /* According to pops section 5.7 p.42, status code 5 for both recv_status and trasm_status
-        imply a successful operation on the device.*/
-        if ((unsigned char)termReg->transm_status == OKCHARTRANS)
-        { /* unsigned char allow us to retrieve the last byte of the status, transm case*/
-            outPcb = unblockPcbDevNo(devNo, &blockedTerminalTransmQueue);
-            devStatus = termReg->transm_status;
-            termReg->transm_command = ACK;
-        }
-        else if ((unsigned char)termReg->recv_status == CHARRECV)
+        imply a successful operation on the device. We need to check the last byte*/
+        if ((unsigned char)termReg->recv_status == CHARRECV)
         { /* in this case, the device is in recv */
-            outPcb = unblockPcbDevNo(devNo, &blockedTerminalRecvQueue);
-            devStatus = termReg->recv_status;
+            outPcb = unlockPcbDevNo(devNo, &blockedTerminalRecvQueue);
+            status = termReg->recv_status;
             termReg->recv_command = ACK;
+        }
+        else if ((unsigned char)termReg->transm_status == OKCHARTRANS)
+        { /* unsigned char allow us to retrieve the last byte of the status, transm case*/
+            outPcb = unlockPcbDevNo(devNo, &blockedTerminalTransmQueue);
+            status = termReg->transm_status;
+            termReg->transm_command = ACK;
         }
         else
             PANIC();
@@ -169,19 +171,19 @@ void deviceHandler(unsigned int interruptLine)
         it could be disk, flash, ethernet or printer.*/
         dtpreg_t *not_termReg = (dtpreg_t *)DEV_REG_ADDR(interruptLine, devNo);
         outPcb = getPcbFromLine(interruptLine, devNo);
-        devStatus = not_termReg->status; /* save off the status code from the device's device register */
-        not_termReg->command = ACK;      /* acknowledgement of the interrupt */
+        status = not_termReg->status;
+        not_termReg->command = ACK;
     }
 
     if (outPcb != NULL)
-    { /* without passing by the ssi, we put the status in the inbox */
-        outPcb->p_s.reg_v0 = devStatus;
+    { /* without passing by the ssi, we put the status in the inbox 
+        to unlock the i/o process. */
+        softBlockCount--;
         msg_PTR msg = allocMsg();
         msg->m_sender = ssi_pcb;
-        msg->m_payload = (memaddr)devStatus;
+        msg->m_payload = outPcb->p_s.reg_v0 = status;
         insertMessage(&outPcb->msg_inbox, msg);
         insertProcQ(&readyQueue, outPcb);
-        softBlockCount--;
     }
     exitInterruptHandler();
 }
@@ -196,7 +198,6 @@ void interruptHandler()
     for uniprocessor environments more info on chapter 5 pops. */
     unsigned int bitmask = EXCEPTION_STATE->cause & CAUSE_IP_MASK;
     setSTATUS(getSTATUS() & ~TEBITON); /* we disable PLT since it should not proceed in interrupt handling*/
-    /* checking which interrupt service should be provided */
     if (LOCALTIMERINT & bitmask)
         PLTHandler();
     else if (TIMERINTERRUPT & bitmask)

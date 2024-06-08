@@ -90,9 +90,9 @@ int main()
        KUc > represents the CURRENT state of Kernel/User mode
     It is important to mention that to setting up a new processor state, we should set 
     PREVIOUS bits and not CURRENT ones (so basically, IEp and KUp counterparts). */
-    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON | TEBITON; /* kernel mode is by default when KUc = 0 */
+    ssi_pcb->p_s.status = ALLOFF | IEPON | IMON; /* kernel mode is by default when KUc = 0 */
     RAMTOP(ssi_pcb->p_s.reg_sp);
-    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) SSILoop;
+    ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9  = (memaddr) SSI;
     insertProcQ(&readyQueue, ssi_pcb);
     processCount++;
     

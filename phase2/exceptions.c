@@ -57,8 +57,7 @@ void recv(unsigned int sender, unsigned int payload)
         msg = popMessage(&current_process->msg_inbox, senderptr);
 
     if (msg == NULL)
-    { /* so there aren't any message in the inbox, we should put it in waiting state 
-        blocking syscall SYS2. */
+    { /* so there aren't any message in the inbox */
         stateCpy(EXCEPTION_STATE, &current_process->p_s);
         updatePCBTime(current_process);
         scheduler();
@@ -67,7 +66,7 @@ void recv(unsigned int sender, unsigned int payload)
     { /* putting sender address in v0 register as returning value of recv */
         EXCEPTION_STATE->reg_v0 = (unsigned int)msg->m_sender;
         if (msg->m_payload != 0)
-        {  /* we check if the payload should be ignored */
+        { /* we check if the payload should be ignored */
             unsigned int *recvd = (unsigned int *)payload;
             *recvd = msg->m_payload;
         }
@@ -90,7 +89,7 @@ void syscallHandler()
 
     /* We check if the processor is in kernel mode looking up at the bit 1 (of 31) of the status register:
     if is 0, then is in Kernel mode, else it's in user mode. */
-    if ((EXCEPTION_STATE->status << (CAUSEREGSIZE - 2)) >> (CAUSEREGSIZE - 1))
+    if ((EXCEPTION_STATE->status & USERPON))
     { /* We check if that PCB in user-mode checking the status
          in which case, should trigger a Program Trap (PassUp or Die) exception response and the subsequent handler.
          According to princOfOperations, Reserved instruction should be code 10. */
@@ -109,10 +108,10 @@ void syscallHandler()
             break;
         case RECEIVEMESSAGE:
             recv(EXCEPTION_STATE->reg_a1, EXCEPTION_STATE->reg_a2);
-            EXCEPTION_STATE->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
+            EXCEPTION_STATE->pc_epc += WORDLEN;
             LDST(EXCEPTION_STATE);
             break;
-        default: /* in case the code retrieved from v0 register isn't valid, trap vector*/
+        default: /* trap vector*/
             passUpOrDie(GENERALEXCEPT);
         }
     }
@@ -127,19 +126,16 @@ void syscallHandler()
  */
 void passUpOrDie(unsigned int excType)
 {
-    if (current_process != NULL)
-    {
-        if (current_process->p_supportStruct == NULL)
-        { /* If there's no support struct, the process and all his progeny will die */
-            terminateProcess(current_process);
-            scheduler();
-        }
-        else
-        { /* the handling is passed up to a specified routine */
-            context_t cxt = current_process->p_supportStruct->sup_exceptContext[excType];
-            stateCpy(EXCEPTION_STATE, &current_process->p_supportStruct->sup_exceptState[excType]);
-            LDCXT(cxt.stackPtr, cxt.status, cxt.pc);
-        }
+    if (current_process->p_supportStruct == NULL)
+    { /* If there's no support struct, the process and all his progeny will die */
+        terminateProcess(current_process);
+        scheduler();
+    }
+    else
+    { /* the handling is passed up to a specified routine */
+        context_t cxt = current_process->p_supportStruct->sup_exceptContext[excType];
+        stateCpy(EXCEPTION_STATE, &current_process->p_supportStruct->sup_exceptState[excType]);
+        LDCXT(cxt.stackPtr, cxt.status, cxt.pc);
     }
 }
 
