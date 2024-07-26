@@ -65,7 +65,7 @@ void recv(unsigned int sender, unsigned int payload)
     else
     { /* putting sender address in v0 register as returning value of recv */
         EXCEPTION_STATE->reg_v0 = (unsigned int)msg->m_sender;
-        if (msg->m_payload != 0)
+        if (msg->m_payload != 0 && payload != 0)
         { /* we check if the payload should be ignored */
             unsigned int *recvd = (unsigned int *)payload;
             *recvd = msg->m_payload;
