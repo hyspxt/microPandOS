@@ -11,5 +11,13 @@
     ```sh
     make clean
     ``` 
+- To compile testers:
+    ```sh
+    make maketest
+    ``` 
+- To delete testers obj file:
+    ```sh
+    make cleantest
+    ``` 
 
 There is also a config example of the simulation machine (```fin```).
