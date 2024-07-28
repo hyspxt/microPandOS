@@ -7,7 +7,8 @@ state_t uProcState[UPROCMAX];
 support_t supStruct[UPROCMAX]; /* support struct that will contain page table */
 /* each swap pool is a set of RAM frames, reserved for vm */
 swap_t swapPoolTable[POOLSIZE];
-pcb_PTR swap_mutex;
+pcb_PTR swap_mutex; /* pcb that listens requests and GIVES the mutex */
+pcb_PTR mutex_recvr; /* pcb that RECEIVE and RELEASE the mutex */
 
 /* sharable peripheral I/O (printer with spooling 
 and terminal) */
@@ -99,8 +100,21 @@ void initSupportStruct(int asid){
  * @param void
  * @return void
  */
-void acq2relMutex(){
-    
+void mutex(){
+    while(1){
+        unsigned int *senderAddr, result;
+
+        /* listens for a mutex request */
+        SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
+        senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
+        /* give to the pcb that requested, the mutex */
+        mutex_recvr = (pcb_PTR) senderAddr;
+        if (mutex_recvr != NULL) /* send a msg to unblock the process */
+          SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, 0, 0);
+
+        /* listens for a mutex release */
+        SYSCALL(RECEIVEMESSAGE, (unsigned int)senderAddr, 0, 0);
+    }
 }
 
 void test()
@@ -124,12 +138,9 @@ void test()
     current_memaddr -= PAGESIZE;
     state_t mutex_s;
     mutex_s.status = ALLOFF | IECON | IMON | TEBITON;
-    mutex_s.pc_epc = mutex_s.reg_t9 = (memaddr) acq2relMutex;
+    mutex_s.pc_epc = mutex_s.reg_t9 = (memaddr) mutex;
     mutex_s.reg_sp = (memaddr) current_memaddr;
     swap_mutex = create_process(&mutex_s, 0);
 
-    
-
-
-
+    /* here the mutex is obtained */
 }

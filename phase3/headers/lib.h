@@ -24,7 +24,7 @@ extern void test();
 void initSwapTable();
 void initUProc(int asid);
 void initSupportStruct(int asid);
-void acq2relMutex();
+void mutex();
 
 
 
