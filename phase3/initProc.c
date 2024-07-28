@@ -8,6 +8,7 @@ support_t supStruct[UPROCMAX]; /* support struct that will contain page table */
 /* each swap pool is a set of RAM frames, reserved for vm */
 swap_t swapPoolTable[POOLSIZE];
 pcb_PTR swap_mutex;
+
 /* sharable peripheral I/O (printer with spooling 
 and terminal) */
 pcb_PTR printerPcbs[UPROCMAX];
@@ -23,8 +24,7 @@ unsigned int current_memaddr;
  * @param void
  * @return void
  */
-void initSwapTable()
-{
+void initSwapTable(){
     for (int i = 0; i < POOLSIZE; i++){
         swapPoolTable[i].sw_asid = OFF; /* 6bit identifier
           to distinguish the process' kuseg from the others*/
@@ -78,18 +78,30 @@ void initSupportStruct(int asid){
         /* these are 64 bits to set for each entry: 32 for entryHi and 32 for entryLo,
         since a page table is an array of TLB entries */
         if (i != 31){ /* setting up virtual page number and asid */
-            supStruct[asid].sup_privatePgTbl[i].pte_entryHi = PRESENTFLAG; 
-            supStruct[asid].sup_privatePgTbl[i].pte_entryHi |= (i << VPNSHIFT);
+            supStruct[asid].sup_privatePgTbl[i].pte_entryHI = PRESENTFLAG; 
+            supStruct[asid].sup_privatePgTbl[i].pte_entryHI |= (i << VPNSHIFT);
         }
         else /* entry 31 is the stack page, that should be set to 0xBFFFF */
-            supStruct[asid].sup_privatePgTbl[i].pte_entryHi = (GETSHAREFLAG - PAGESIZE);
-        supStruct[asid].sup_privatePgTbl[i].pte_entryHi |= (asid + 1) << ASIDSHIFT;
+            supStruct[asid].sup_privatePgTbl[i].pte_entryHI = (GETSHAREFLAG - PAGESIZE);
+        supStruct[asid].sup_privatePgTbl[i].pte_entryHI |= (asid + 1) << ASIDSHIFT;
 
         /* valid bit off and dirty bit on */
-        supStruct[asid].sup_privatePgTbl[i].pte_entryLo = ~VALIDON | DIRTYON;
+        supStruct[asid].sup_privatePgTbl[i].pte_entryLO = ~VALIDON | DIRTYON;
     }
 }
 
+/**
+ * @brief Allow a process to ask with message passing the mutex
+ *        for accessing the swap pool table. If it can't acquire that mutex, 
+ *        it will be blocked, until the mutex is released by another pcb
+ *        that has acquired it before and therefore is exiting swap pool.
+ *          
+ * @param void
+ * @return void
+ */
+void acq2relMutex(){
+    
+}
 
 void test()
 {
@@ -99,13 +111,23 @@ void test()
 
     /* following the structure in p2test -> test func 
     no need to alloc this, this is already done in ph2*/
-    test_pcb = current_process;
+    testPcb = current_process;
 
     /* user process (UPROC) initialization - 10.1 specs */
     for (int i = 0; i < UPROCMAX; i++){
         initUProc(i);
         initSupportStruct(i);
     }
+
+    /* mutex process */
+    // swap_mutex = allocPcb(); no need to allocate
+    current_memaddr -= PAGESIZE;
+    state_t mutex_s;
+    mutex_s.status = ALLOFF | IECON | IMON | TEBITON;
+    mutex_s.pc_epc = mutex_s.reg_t9 = (memaddr) acq2relMutex;
+    mutex_s.reg_sp = (memaddr) current_memaddr;
+    swap_mutex = create_process(&mutex_s, 0);
+
     
 
 
