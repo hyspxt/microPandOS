@@ -10,7 +10,7 @@
 
 /* -- VARIABLES -- */
 extern state_t uProcState[UPROCMAX];
-extern support_t pageTable[UPROCMAX];
+extern support_t supStruct[UPROCMAX];
 extern swap_t swapPoolTable[POOLSIZE];
 
 extern pcb_PTR printerPcbs[DEVPERINT];
@@ -22,6 +22,8 @@ extern void test();
 /* -- FUNCTIONS PROTOTYPES -- */
 /* init module */
 void initSwapTable();
+void initUProc(int asid);
+void initSupportStruct(int asid);
 
 #endif
 
