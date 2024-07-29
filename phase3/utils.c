@@ -28,4 +28,24 @@ pcb_PTR create_process(state_t *s, support_t *sup){
     return p;
 }
 
+/**
+ * @brief Get the support struct requesting the associated service
+ *        to the ssi process. The support struct is taken from sender
+ *        data (and eventually inherited by its children).
+ *          
+ * @param void
+ * @return a support struct associated with the process
+ */
+support_t *getSupStruct()
+{
+    support_t *sup;
+    ssi_payload_t getsup_payload = {
+        .service_code = GETSUPPORTPTR,
+        .arg = NULL,
+    };
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&getsup_payload), 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&sup), 0);
+    return sup;
+}
+
 

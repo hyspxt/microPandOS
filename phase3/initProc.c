@@ -5,6 +5,10 @@ structure that is pointed by a U-Proc. To be created, a
 PCB needs its state and support struct */
 state_t uProcState[UPROCMAX];
 support_t supStruct[UPROCMAX]; /* support struct that will contain page table */
+/* in parallel, same thing for SST processes */
+state_t sstProcState[UPROCMAX];
+support_t sstSupStruct[UPROCMAX];
+
 /* each swap pool is a set of RAM frames, reserved for vm */
 swap_t swapPoolTable[POOLSIZE];
 pcb_PTR swap_mutex; /* pcb that listens requests and GIVES the mutex */
@@ -17,24 +21,6 @@ pcb_PTR terminalPcbs[UPROCMAX];
 
 pcb_PTR testPcb;
 unsigned int current_memaddr;
-
-/**
- * @brief Initialize the swap pool table, by putting a default value
- *        in swap_t structure fields. 
- *          
- * @param void
- * @return void
- */
-void initSwapTable(){
-    for (int i = 0; i < POOLSIZE; i++){
-        swapPoolTable[i].sw_asid = OFF; /* 6bit identifier
-          to distinguish the process' kuseg from the others*/
-        swapPoolTable[i].sw_pageNo = OFF; /* sw_pageNo is the
-          virtual page number in the swap pool.*/
-        swapPoolTable[i].sw_pte = NULL; /* pointer to the page table entry */
-        /* TODO check if this causes problems */
-    }
-}
 
 /**
  * @brief Initialize a single user process setting up its fields.
@@ -120,8 +106,7 @@ void mutex(){
 void test()
 {
     /* Swap table initialization */
-    initSwapTable();
-    klog_print("Swap table initialized");
+    initSwapStructs();
 
     /* following the structure in p2test -> test func 
     no need to alloc this, this is already done in ph2*/
@@ -133,7 +118,7 @@ void test()
         initSupportStruct(i);
     }
 
-    /* mutex process */
+    /* mutex process, tried by ssi but another proc is needed */
     // swap_mutex = allocPcb(); no need to allocate
     current_memaddr -= PAGESIZE;
     state_t mutex_s;
@@ -143,4 +128,5 @@ void test()
     swap_mutex = create_process(&mutex_s, 0);
 
     /* here the mutex is obtained */
+
 }

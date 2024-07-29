@@ -31,7 +31,7 @@ VPATH = $(UMPS3_DATA_DIR)
 # Object files
 PHASE1 = ./phase1/pcb.o ./phase1/msg.o klog.o
 PHASE2 = ./phase2/initial.o ./phase2/scheduler.o ./phase2/exceptions.o ./phase2/interrupts.o ./phase2/ssi.o
-PHASE3 = ./phase3/initProc.o ./phase3/sst.o ./phase3/sysSupport.o ./phase3/vmSupport.o
+PHASE3 = ./phase3/initProc.o ./phase3/sst.o ./phase3/sysSupport.o ./phase3/vmSupport.o ./phase3/utils.o
 
 .PHONY : all clean maketest cleantest
 
@@ -50,7 +50,7 @@ maketest :
 	$(MAKE) -C testers/
 
 cleantest :
-	-rm -f testers/*.o testers/*.umps
+	-rm -f testers/*.o testers/*.umps printer*.umps term*.umps
 
 # Pattern rule for assembly modules
 %.o : %.S

@@ -21,15 +21,16 @@ extern void test();
 
 /* -- FUNCTIONS PROTOTYPES -- */
 /* init module */
-void initSwapTable();
 void initUProc(int asid);
 void initSupportStruct(int asid);
 void mutex();
 
-
+/* vmSupport module */
+void initSwapStructs();
+void pager();
 
 /* utils (from p2test) */
-extern pcb_PTR create_process(state_t *s, support_t *sup);
+pcb_PTR create_process(state_t *s, support_t *sup);
 
 #endif
 
