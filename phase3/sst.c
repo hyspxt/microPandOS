@@ -1,8 +1,62 @@
 #include "./headers/lib.h"
 
+
 /**
- * @brief The SST service. It is responsible for handling the SSI requests.
- * 		  If everything goes well, the SSI loop will send a message to the process that requested the service.
+ * @brief Terminate the calling process. Wrapper for the 
+ *        TerminateProcess service. Causes the termination of the
+ *        SST process and its UProc child.
+ *
+ * @param void
+ * @return void
+ */
+void terminate(){
+    /* since a TerminateProcess kill also the process progeny 
+    recursively, one call (that kills the caller) is sufficient */
+    ssi_payload_t sst_payload = {
+        .service_code = TERMINATE,
+        .arg = NULL,
+    };
+
+    /* SST termination */
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&sst_payload, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, 0, 0);
+    /* communicate the termination to test */
+    SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);
+}
+
+/**
+ * @brief This service cause the print of a string of characters to the printer device.
+ *        Sender must wait an empty response from the SST.
+ *
+ * @param asid - the address space identifier
+ * @param print - the struct containing the string and its length
+ * @return void
+ */
+void writePrinter(int asid, sst_print_PTR print)
+{ /* the empty response is sent in SST() */
+    SYSCALL(SENDMESSAGE, (unsigned int) printerPcbs[asid], (unsigned int)print->string, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int) printerPcbs[asid], 0, 0);
+}
+
+/**
+ * @brief This service cause the print of a string of characters to terminal device.
+ *        Sender must wait an empty response from the SST.
+ *
+ * @param asid - the address space identifier
+ * @param print - the struct containing the string and its length
+ * @return void
+ */
+void writeTerminal(int asid, sst_print_PTR print)
+{ /* the empty response is sent in SST() */
+    SYSCALL(SENDMESSAGE, (unsigned int) terminalPcbs[asid], (unsigned int)print->string, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int) terminalPcbs[asid], 0, 0);
+}
+
+
+
+/**
+ * @brief The SST service. It is responsible for handling the SST requests.
+ * 		  
  * 		  If SSI ever gets terminated, the system must be stopped performing an emergency shutdown.
  *
  * @param void
@@ -16,10 +70,10 @@ void SST()
     support_t *sstSup = getSupStruct();
     int asidIndex = sstSup->sup_asid - 1;
     state_t *sstState = &uProcState[asidIndex];
-
+`
     /* create the child */
     pcb_PTR sst_child = create_process(sstState, sstSup);
-    
+
 	while (1)
 	{   /* SST child must wait for an answer */
 		unsigned int *senderAddr, result;
@@ -56,12 +110,13 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
 	case GET_TOD: /* returns the TOD clock value */
         res = getTOD();
         break;
-    case TERMINATE:
-        terminate(asid);
+    case TERMINATE: /* this should kill both the Uproc and the SST */
+        terminate();
         res = ON;
-        
     case WRITEPRINTER:
-
+        writePrinter(asid - 1, (sst_print_PTR) arg);
+        res = ON;
+        break;
     case WRITETERMINAL:
 
 	default:

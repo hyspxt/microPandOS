@@ -21,16 +21,23 @@ extern void test();
 
 /* -- FUNCTIONS PROTOTYPES -- */
 /* init module */
-void initUProc(int asid);
-void initSupportStruct(int asid);
+void initUProc(int);
+void initSupportStruct(int);
 void mutex();
+
+/* SST module */
+void terminate();
+void writePrinter(int, sst_print_PTR);
+void writeTerminal(int, sst_print_PTR);
+void SST();
+unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
 /* vmSupport module */
 void initSwapStructs();
 void pager();
 
 /* utils (from p2test) */
-pcb_PTR create_process(state_t *s, support_t *sup);
+pcb_PTR create_process(state_t*, support_t*);
 
 #endif
 

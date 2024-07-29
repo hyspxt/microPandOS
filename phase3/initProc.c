@@ -14,8 +14,8 @@ swap_t swapPoolTable[POOLSIZE];
 pcb_PTR swap_mutex; /* pcb that listens requests and GIVES the mutex */
 pcb_PTR mutex_recvr; /* pcb that RECEIVE and RELEASE the mutex */
 
-/* sharable peripheral I/O (printer with spooling 
-and terminal) */
+/* specs -> have a process for each device that waits for
+messages and requests the single DoIO to the SSI (SST?) */
 pcb_PTR printerPcbs[UPROCMAX];
 pcb_PTR terminalPcbs[UPROCMAX];
 
