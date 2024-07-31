@@ -15,7 +15,7 @@ void terminate(){
     ssi_payload_t sst_payload = {
         .service_code = TERMINATE,
         .arg = NULL,
-    };
+    };  /* if it's NULL, SSI terminate the sender and its UPROC child */
 
     /* SST termination */
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&sst_payload, 0);
@@ -52,8 +52,6 @@ void writeTerminal(int asid, sst_print_PTR print)
     SYSCALL(RECEIVEMESSAGE, (unsigned int) terminalPcbs[asid], 0, 0);
 }
 
-
-
 /**
  * @brief The SST service. It is responsible for handling the SST requests.
  * 		  
@@ -82,7 +80,7 @@ void SST()
 		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
 		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
 
-        /* no typing differencce actually */
+        /* mind that this is a SST payload, despite the struct it's the same */
 		ssi_payload_PTR sstpyld = (ssi_payload_PTR)payload;
 		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, sup->sup_asid);
 		if (result != NOPROC) 
@@ -113,15 +111,17 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
     case TERMINATE: /* this should kill both the Uproc and the SST */
         terminate();
         res = ON;
-    case WRITEPRINTER:
-        writePrinter(asid - 1, (sst_print_PTR) arg);
+    case WRITEPRINTER: /* asid - 1 cause the param should be used as a index */
+        writePrinter(asid - 1, (sst_print_PTR) arg); 
         res = ON;
         break;
     case WRITETERMINAL:
-
+        writeTerminal(asid - 1, (sst_print_PTR) arg);
+        res = ON;
+        break;
 	default:
-		terminateProcess(sender);
-		res = MSGNOGOOD;
+		terminate();
+		res = ON;
 		break;
 	}
 	return res;
