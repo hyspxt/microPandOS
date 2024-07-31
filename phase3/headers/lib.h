@@ -24,6 +24,8 @@ extern void test();
 void initUProc(int);
 void initSupportStruct(int);
 void mutex();
+memaddr nextFrame(memaddr);
+void initDeviceProc(int asid, int devNo);
 
 /* SST module */
 void terminate();
@@ -33,8 +35,11 @@ void SST();
 unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
 /* vmSupport module */
-void initSwapStructs();
+void initSwapStructs(int);
 void pager();
+
+/* sysSupport module */
+void supExceptionHandler();
 
 /* utils (from p2test) */
 pcb_PTR create_process(state_t*, support_t*);

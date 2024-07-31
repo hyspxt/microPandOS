@@ -63,14 +63,14 @@ void writeTerminal(int asid, sst_print_PTR print)
 void SST()
 { /* The idea is that this process constantly listens to 
     requests done by its children, and then it responds */
-
+    pcb_PTR sst_child;
     /* get the structures to creating child process */
     support_t *sstSup = getSupStruct();
     int asidIndex = sstSup->sup_asid - 1;
     state_t *sstState = &uProcState[asidIndex];
 `
     /* create the child */
-    pcb_PTR sst_child = create_process(sstState, sstSup);
+    sst_child = create_process(sstState, sstSup);
 
 	while (1)
 	{   /* SST child must wait for an answer */
