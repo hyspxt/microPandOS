@@ -210,5 +210,6 @@
 #define STARTPROGTRAPEXC 4
 #define STOPPROGTRAPEXC 7
 #define ENDPROGTRAPEXC 12
+#define PARENT 0 /* there is in testers actually */
 
 #endif

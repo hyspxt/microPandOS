@@ -40,6 +40,8 @@ void pager();
 
 /* sysSupport module */
 void supExceptionHandler();
+void supSyscallHandler(state_t*);
+void programTrapHandler(state_t*);
 
 /* utils (from p2test) */
 pcb_PTR create_process(state_t*, support_t*);

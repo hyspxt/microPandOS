@@ -9,7 +9,7 @@
  * @param void
  * @return void
  */
-void terminate(){
+void terminate(int notify){
     /* since a TerminateProcess kill also the process progeny 
     recursively, one call (that kills the caller) is sufficient */
     ssi_payload_t sst_payload = {
@@ -21,7 +21,8 @@ void terminate(){
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&sst_payload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, 0, 0);
     /* communicate the termination to test */
-    SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);
+    if(notify)
+        SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);
 }
 
 /**
@@ -109,7 +110,7 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
         res = getTOD();
         break;
     case TERMINATE: /* this should kill both the Uproc and the SST */
-        terminate();
+        terminate(ON); /* notify the test */
         res = ON;
     case WRITEPRINTER: /* asid - 1 cause the param should be used as a index */
         writePrinter(asid - 1, (sst_print_PTR) arg); 
