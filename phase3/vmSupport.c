@@ -62,16 +62,45 @@ void handleOccupiedFrame(int frameIndex){
     /* invaliding page */
     swapPoolTable[frameIndex]->sw_pte->pte_entryLO &= ~VALIDON; 
     /* updatin TLB */
-    setENTRYHI((swapPoolTable[frameIndex]->sw_pte->pte_entryHI) & ENTRYHI_MASK);
+    setENTRYHI(swapPoolTable[frameIndex]->sw_pte->pte_entryHI);
     TLBP(); /* TLBProbe */
     if (!(getIndex() & PRESENTFLAG)){ /* not cached */
       /* updating only entryLO cause it's the part of the TLB entry that 
       contains the Physical Frame Number -> no need to modify VPN/EntryHI */
-      setENTRYLO((swapPoolTable[frameIndex]->sw_pte->pte_entryLO) & ENTRYLO_MASK);
+      setENTRYLO(swapPoolTable[frameIndex]->sw_pte->pte_entryLO);
       TLBWI(); /* TLBWrite */
     } /* re-enabling interrupts, immediatly */
     setSTATUS(getSTATUS() | IECON); 
 }
+
+/**
+ * @brief Atomically, update a process page table entry, marking it as valid and
+ *        eventually update the TLB.
+ *
+ * @param memaddr pageAddr - the address of the page
+ * @param support_t *sup - the support struct get from current_process
+ * @param int pageNo - the page number in the swap pool table
+ * @return void
+ */
+void handleFreeFrame(memaddr pageAddr, support_t *sup, int pageNo){
+    setSTATUS(getSTATUS() & ~IECON); /* disabling interrupts */
+    sup->sup_privatePgTbl[pageNo].pte_entryLO |= VALIDON; /* marking as valid */
+    // sup->sup_privatePgTbl[pageNo].pte_entryLO &= ~DIRTYON; /* marking as not dirty */
+    sup->sup_privatePgTbl[pageNo].pte_entryLO &= 0xFFF; /* preserv first 12 bit of entryLO -> reset PFN */
+    sup->sup_privatePgTbl[pageNo].pte_entryLO |= pageAddr; /* setting the frame */
+
+    /* updatin TLB */
+    setENTRYHI(sup->sup_privatePgTbl[pageNo]->pte_entryHI);
+    TLBP(); /* TLBProbe */
+    if (!(getIndex() & PRESENTFLAG)){ /* not cached */
+      /* updating only entryLO cause it's the part of the TLB entry that 
+      contains the Physical Frame Number -> no need to modify VPN/EntryHI */
+      setENTRYLO(sup->sup_privatePgTbl[pageNo]->pte_entryLO);
+      TLBWI(); /* TLBWrite */
+    } /* re-enabling interrupts, immediatly */
+    setSTATUS(getSTATUS() | IECON); 
+}
+
 
 /**
  * @brief Perform a backing store operation, reading or writing a page from/in the backing store.
@@ -79,10 +108,10 @@ void handleOccupiedFrame(int frameIndex){
  *        are done in blocks using data1 and command field, as specified in 
  *        uMPS3 - pops p.34.
  *
- * @param pageAddr - the address of the page to read/write and load in data1
- * @param asid - the address space identifier
- * @param pageNo - the page number in the swap pool table
- * @param operation - the operation to perform (READ/WRITE)
+ * @param memaddr pageAddr - the address of the page to read/write and load in data1
+ * @param int asid - the address space identifier
+ * @param int pageNo - the page number in the swap pool table
+ * @param int operation - the operation to perform (READ/WRITE)
  * @return int - the status of the backing store write operation
  */
 int backingStoreOp(memaddr pageAddr, int asid, int pageNo, int operation){
@@ -110,6 +139,36 @@ int backingStoreOp(memaddr pageAddr, int asid, int pageNo, int operation){
 }
 
 /**
+ * @brief Updates swap pool table to reflect frame new content.
+ *
+ * @param int frameIndex - the index of the frame in the swap pool table 
+ * @param support_t *sup - the support struct get from current_process
+ * @param int pageNo - the page number in the swap pool table
+ * @return void
+ */
+void updateSwapTable(int frameIndex, support_t *sup, int pageNo){
+  swapPoolTable[frameIndex]->sw_asid = sup->sup_asid;
+  swapPoolTable[frameIndex]->sw_pageNo = pageNo;
+  swapPoolTable[frameIndex]->sw_pte = &(sup->sup_privatePgTbl[pageNo]);
+}
+
+/**
+ * @brief Updates swap pool table to reflect frame new content..
+ *
+ * @param int frameIndex - the index of the frame in the swap pool table 
+ * @param support_t *sup - the support struct get from current_process
+ * @param int pageNo - the page number in the swap pool table
+ * @return void
+ */
+void updateSwapTable(int frameIndex, support_t *sup, int pageNo){
+  swapPoolTable[frameIndex]->sw_asid = sup->sup_asid;
+  swapPoolTable[frameIndex]->sw_pageNo = pageNo;
+  swapPoolTable[frameIndex]->sw_pte = &(sup->sup_privatePgTbl[pageNo]);
+}
+
+
+
+/**
  * @brief Pager component.
  *
  * @param void
@@ -123,7 +182,7 @@ void pager()
   /* determine the case of the TLB exception occurred */
   state_t *excState = &(supStruct->sup_exceptState[PGFAULTEXCEPT]) int excCode = (excState->cause & GETEXECCODE) >> CAUSESHIFT;
   if (excCode == TLBINVLDM) /* if the exc is a TLB-modification */
-    programTrapHandler(excState);
+    programTrapHandler(excState, OFF); /* it will be released anyway */
   else
   { /* otherwise handle the remaining TLB invalid action (load/store) */
     /* gain mutual exclusion, sending and awaiting message to mutex giver */
@@ -145,12 +204,23 @@ void pager()
       /* mark page as not valid, atomically disabiliting interrupts */
       /* update also the TLB, if needed */
       handleOccupiedFrame(frameIndex);
+      /* update backing store and check status */
       status = backingStoreOp(victimPageAddr, swapPoolTable[frameIndex]->sw_asid, swapPoolTable[frameIndex]->sw_pageNo, FLASHWRITE);
-
-
-
+      if (status != ON) /* doio should return a "Device Ready" = 1 status */
+        programTrapHandler(excState, ON);
     }
 
+    /* read the contents from backing store in logical page p */
+    status = backingStoreOp(victimPageAddr, sup->sup_asid, p, FLASHREAD);
+    if (status != ON) /* doio should return a "Device Ready" = 1 status */
+      programTrapHandler(excState, ON);
+    /* update the swap pool table */
+    updateSwapTable(frameIndex, sup, p); 
+    /* update page table entry and TLB */
+    handleFreeFrame(frameIndex, sup, ); /* handle the free frame */
 
+    /* release the mutex */
+    SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
+    LDST(excState);
   }
 }

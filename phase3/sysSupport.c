@@ -39,11 +39,11 @@ void supExceptionHandler(state_t *excState){
  * @param void
  * @return void
  */
-void programTrapHandler(state_t *excState){
+void programTrapHandler(state_t *excState, int releaseMutex){
     /* first of all, if the calling process is the mutex holder
     we need to release it before the termination, otherwise the 
     mutex will be locked indefinetely */
-    if (current_process == mutex_rcvr) /* mind that mutex_rcvr is the 
+    if (current_process == mutex_rcvr || releaseMutex) /* mind that mutex_rcvr is the 
     mutex holder and swap_mutex is the mutex giver/releaser */
         SYSCALL(SENDMESSAGE, (unsigned int) swap_mutex, 0, 0); /* send to unblock */
     terminate(OFF); /* SST killing service */
@@ -70,7 +70,7 @@ void supExceptionHandler()
         supSyscallHandler(excState);
         break;
     default:
-        programTrapHandler(excState);
+        programTrapHandler(excState, OFF);
         break;
     }
 }
