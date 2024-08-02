@@ -25,17 +25,18 @@ void initUProc(int);
 void initSupportStruct(int);
 void mutex();
 memaddr nextFrame(memaddr);
-void initDeviceProc(int asid, int devNo);
+void initDeviceProc(int, int);
 
 /* SST module */
-void terminate();
+void terminate(int);
 void writePrinter(int, sst_print_PTR);
 void writeTerminal(int, sst_print_PTR);
 void SST();
 unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
 /* vmSupport module */
-void uTLB_RefillHandler();
+// void uTLB_RefillHandler();
+int replacement();
 void initSwapStructs(int);
 void pager();
 
