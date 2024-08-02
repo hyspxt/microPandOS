@@ -211,5 +211,9 @@
 #define STOPPROGTRAPEXC 7
 #define ENDPROGTRAPEXC 12
 #define PARENT 0 /* there is in testers actually */
+#define NOASID -1
+#define NOPAGE -1
+#define SWAPPOOL (RAMSTART + (MAXPAGES * PAGESIZE))
+#define TLBINVLDM 1
 
 #endif

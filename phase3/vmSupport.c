@@ -9,12 +9,12 @@
  */
 void initSwapStructs(int entryid)
 {
-  swapPoolTable[i].sw_asid = OFF;   /* 6bit identifier
+  swapPoolTable[i].sw_asid = NOASID;   /* 6bit identifier
         to distinguish the process' kuseg from the others*/
-  swapPoolTable[i].sw_pageNo = OFF; /* sw_pageNo is the
+  swapPoolTable[i].sw_pageNo = NOPAGE; /* sw_pageNo is the
     virtual page number in the swap pool.*/
-  swapPoolTable[i].sw_pte = NULL;   /* pointer to the page table entry */
-                                    /* TODO check if this causes problems */
+  swapPoolTable[i].sw_pte = NULL;      /* pointer to the page table entry */
+                                       /* TODO check if this causes problems */
 }
 
 /**
@@ -25,5 +25,11 @@ void initSwapStructs(int entryid)
  */
 void pager()
 {
-  /* TODO */
+  /* obtain the support struct */
+  support_t *sstSup = getSupStruct();
+
+  /* determine the case of the TLB exception occurred */
+  int cause = sup->sup_exceptContext[PGFAULTEXCEPT].cause;
+  int excCode = (cause & GETEXECCODE) >> CAUSESHIFT;
+  if (excCode == TLBINVLDM) /* if the exc is a TLB-modificiation */
 }

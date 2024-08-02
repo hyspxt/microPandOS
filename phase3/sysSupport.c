@@ -47,6 +47,7 @@ void programTrapHandler(state_t *excState){
     mutex holder and swap_mutex is the mutex giver/releaser */
         SYSCALL(SENDMESSAGE, (unsigned int) swap_mutex, 0, 0); /* send to unblock */
     terminate(OFF); /* SST killing service */
+    LDST(excState);
 }
 
 /**

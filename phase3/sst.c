@@ -13,7 +13,7 @@ void terminate(int notify){
     /* since a TerminateProcess kill also the process progeny 
     recursively, one call (that kills the caller) is sufficient */
     ssi_payload_t sst_payload = {
-        .service_code = TERMINATE,
+        .service_code = TERMPROCESS,
         .arg = NULL,
     };  /* if it's NULL, SSI terminate the sender and its UPROC child */
 

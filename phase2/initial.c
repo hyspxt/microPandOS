@@ -19,8 +19,8 @@ pcb_PTR ssi_pcb, new_pcb;
 /**
  * @brief The TLB-Refill event Handler. This type of event is triggered
  *        whenever a TLB exception occurs, that is, when we try to access
- *        a page that is not in the TLB. So, its a cache-miss even that occurs
- *        as a page fault. Hence, this handler is responsible for loading the
+ *        a page that is not in the TLB. So, it's a cache-miss event.
+ *        Hence, this handler is responsible for loading the
  *        missing page table entry and restart the instruction.
  *        note. Previous definition (for phase2) is found in lib.h, commented.
  *          
