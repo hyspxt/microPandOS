@@ -36,6 +36,13 @@ extern void test();
 void stateCpy(state_t *, state_t *);
 // void stateCPY4debug(state_t *, state_t *); This contained a lot of klog_prints
 void uTLB_RefillHandler();
+/* phase 2 definition
+void uTLB_RefillHandler(){
+    setENTRYHI(0x80000000);
+    setENTRYLO(0x00000000);
+    TLBWR();
+    LDST((state_t*) 0x0FFFF000);
+} */
 
 /* ssi module*/
 void SSI();

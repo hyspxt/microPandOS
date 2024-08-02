@@ -64,8 +64,8 @@ void supExceptionHandler()
     state_t *excState = &(supStruct->sup_exceptState[GENERALEXCEPT]);
     int excCode = (excState->cause & GETEXECCODE) >> CAUSESHIFT;
     switch (excCode)
-    {
-    case SYSEXCEPTION: /* same as nucleus */
+    {  /* same as nucleus */
+    case SYSEXCEPTION:
         supSyscallHandler(excState);
         break;
     default:

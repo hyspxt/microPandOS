@@ -35,6 +35,7 @@ void SST();
 unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
 /* vmSupport module */
+void uTLB_RefillHandler();
 void initSwapStructs(int);
 void pager();
 

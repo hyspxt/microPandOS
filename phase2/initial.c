@@ -16,12 +16,25 @@ struct list_head blockedTerminalTransmQueue, blockedTerminalRecvQueue;
 struct list_head pseudoClockQueue;
 pcb_PTR ssi_pcb, new_pcb;
 
+/**
+ * @brief The TLB-Refill event Handler. This type of event is triggered
+ *        whenever a TLB exception occurs, that is, when we try to access
+ *        a page that is not in the TLB. So, its a cache-miss even that occurs
+ *        as a page fault. Hence, this handler is responsible for loading the
+ *        missing page table entry and restart the instruction.
+ *        note. Previous definition (for phase2) is found in lib.h, commented.
+ *          
+ * @param void
+ * @return int
+ */
 void uTLB_RefillHandler()
-{
-    setENTRYHI(0x80000000);
-    setENTRYLO(0x00000000);
-    TLBWR();
-    LDST((state_t *)0x0FFFF000);
+{ /* redefinition of phase2 handler */
+    int p = ENTRYHI_GET_VPN(EXCEPTION_STATE->entry_hi);
+    /* this is done due cause it happens that the macro 
+    return a out of range (0-31) value */
+    if (p >= MAXPAGES - 1)
+        p = MAXPAGES - 1;
+    
 }
 
 /**
