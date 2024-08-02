@@ -2,7 +2,8 @@
 
 /**
  * @brief Initialize the swap pool table, by putting a default value
- *        in swap_t structure fields.
+ *        in swap_t structure fields. Defined here, but used in initProc.c
+ *        according to specs.
  *
  * @param void
  * @return void
@@ -48,6 +49,65 @@ void askMutex(){
     SYSCALL(RECEIVEMESSAGE, (unsigned int)swap_mutex, 0, 0);
 }
 
+/**
+ * @brief Atomically, update a process page table entry, marking it as not valid and
+ *        eventually update the TLB.
+ *
+ * @param void
+ * @return void
+ */
+void handleOccupiedFrame(int frameIndex){
+    /* disabling interrupts - 5.3 specs */
+    setSTATUS(getSTATUS() & ~IECON);
+    /* invaliding page */
+    swapPoolTable[frameIndex]->sw_pte->pte_entryLO &= ~VALIDON; 
+    /* updatin TLB */
+    setENTRYHI((swapPoolTable[frameIndex]->sw_pte->pte_entryHI) & ENTRYHI_MASK);
+    TLBP(); /* TLBProbe */
+    if (!(getIndex() & PRESENTFLAG)){ /* not cached */
+      /* updating only entryLO cause it's the part of the TLB entry that 
+      contains the Physical Frame Number -> no need to modify VPN/EntryHI */
+      setENTRYLO((swapPoolTable[frameIndex]->sw_pte->pte_entryLO) & ENTRYLO_MASK);
+      TLBWI(); /* TLBWrite */
+    } /* re-enabling interrupts, immediatly */
+    setSTATUS(getSTATUS() | IECON); 
+}
+
+/**
+ * @brief Perform a backing store operation, reading or writing a page from/in the backing store.
+ *        Mind that a backing store is treated as a flash device, so operations
+ *        are done in blocks using data1 and command field, as specified in 
+ *        uMPS3 - pops p.34.
+ *
+ * @param pageAddr - the address of the page to read/write and load in data1
+ * @param asid - the address space identifier
+ * @param pageNo - the page number in the swap pool table
+ * @param operation - the operation to perform (READ/WRITE)
+ * @return int - the status of the backing store write operation
+ */
+int backingStoreOp(memaddr pageAddr, int asid, int pageNo, int operation){
+  /* take the register as a non-terminal device register 
+  interruptLine is obviosly associated with flash devices, and the devNo
+  depends on which backing store we're considering (so depends on UProc asid) */
+  dtpreg_t *flashReg = (dtpreg_t *)DEV_REG_ADDR(IL_FLASH, asid - 1);
+  flashReg->data1 = pageAddr; /* load the page address, 4k block to read/write */
+  unsigned int s;
+
+  /* pops p.35 - an operation on a flash device is started by loading the 
+  appropriate value into the COMMAND field. */
+  ssi_do_io_t do_io = { /* doio service */
+      .commandAddr = &(flashReg->command),
+      .commandValue = (pageNo << BYTELENGTH) | operation,
+  }; /* write on BLOCKNUMBER (24bit) shifting 1byte sx */
+  ssi_payload_t payload = {
+      .service_code = DOIO,
+      .arg = &do_io,
+  };
+  /* send the service to the SSi */
+  SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&s, 0);
+  return s;
+}
 
 /**
  * @brief Pager component.
@@ -79,6 +139,18 @@ void pager()
     int frameIndex = replacement();
     /* examine the page (assuming OS code is located as specs said)*/
     memaddr victimPageAddr = (memaddr) SWAPPOOL + (frameIndex * PAGESIZE);
+
+    int status; /* status to read after operations of backing stores */
+    if (swapPoolTable[frameIndex]->sw_asid != NOASID){ /* frame currently occupied */
+      /* mark page as not valid, atomically disabiliting interrupts */
+      /* update also the TLB, if needed */
+      handleOccupiedFrame(frameIndex);
+      status = backingStoreOp(victimPageAddr, swapPoolTable[frameIndex]->sw_asid, swapPoolTable[frameIndex]->sw_pageNo, FLASHWRITE);
+
+
+
+    }
+
 
   }
 }
