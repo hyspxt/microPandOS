@@ -153,22 +153,6 @@ void updateSwapTable(int frameIndex, support_t *sup, int pageNo){
 }
 
 /**
- * @brief Updates swap pool table to reflect frame new content..
- *
- * @param int frameIndex - the index of the frame in the swap pool table 
- * @param support_t *sup - the support struct get from current_process
- * @param int pageNo - the page number in the swap pool table
- * @return void
- */
-void updateSwapTable(int frameIndex, support_t *sup, int pageNo){
-  swapPoolTable[frameIndex]->sw_asid = sup->sup_asid;
-  swapPoolTable[frameIndex]->sw_pageNo = pageNo;
-  swapPoolTable[frameIndex]->sw_pte = &(sup->sup_privatePgTbl[pageNo]);
-}
-
-
-
-/**
  * @brief Pager component.
  *
  * @param void
@@ -217,10 +201,11 @@ void pager()
     /* update the swap pool table */
     updateSwapTable(frameIndex, sup, p); 
     /* update page table entry and TLB */
-    handleFreeFrame(frameIndex, sup, ); /* handle the free frame */
+    handleFreeFrame(frameIndex, sup, ); 
 
     /* release the mutex */
     SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
+    /* return control to retry after the page fault */
     LDST(excState);
   }
 }
