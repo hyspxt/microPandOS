@@ -53,43 +53,6 @@ void writeTerminal(int asid, sst_print_PTR print)
     SYSCALL(RECEIVEMESSAGE, (unsigned int) terminalPcbs[asid], 0, 0);
 }
 
-/**
- * @brief The SST service. It is responsible for handling the SST requests.
- * 		  
- * 		  If SSI ever gets terminated, the system must be stopped performing an emergency shutdown.
- *
- * @param void
- * @return void
- */
-void SST()
-{ /* The idea is that this process constantly listens to 
-    requests done by its children, and then it responds */
-    pcb_PTR sst_child;
-    /* get the structures to creating child process */
-    support_t *sstSup = getSupStruct();
-    int asidIndex = sstSup->sup_asid - 1;
-    state_t *sstState = &uProcState[asidIndex];
-`
-    /* create the child */
-    sst_child = create_process(sstState, sstSup);
-
-	while (1)
-	{   /* SST child must wait for an answer */
-		unsigned int *senderAddr, result;
-		pcb_PTR payload;
-
-		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
-		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
-
-        /* mind that this is a SST payload, despite the struct it's the same */
-		ssi_payload_PTR sstpyld = (ssi_payload_PTR)payload;
-		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, sup->sup_asid);
-		if (result != NOPROC) 
-		{ /* everything went fine, so we obtained the result of SST the request, now send it back*/
-			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
-		}
-	}
-}
 
 /**
  * @brief Handles the SST requests during SST loop, dispatching the actual service called
@@ -121,9 +84,46 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
         res = ON;
         break;
 	default:
-		terminate();
+		terminate(OFF);
 		res = ON;
 		break;
 	}
 	return res;
+}
+
+/**
+ * @brief The SST service. It is responsible for handling the SST requests.
+ * 		  It follows the protocol listen -> call a service -> reply with result.
+ *
+ * @param void
+ * @return void
+ */
+void SST()
+{ /* The idea is that this process constantly listens to 
+    requests done by its children, and then it responds */
+    pcb_PTR sst_child;
+    /* get the structures to creating child process */
+    support_t *sstSup = getSupStruct();
+    int asidIndex = sstSup->sup_asid - 1;
+    state_t *sstState = &uProcState[asidIndex];
+`
+    /* create the child */
+    sst_child = create_process(sstState, sstSup);
+
+	while (1)
+	{   /* SST children (UPROC) must wait for an answer */
+		unsigned int *senderAddr, result;
+		pcb_PTR payload;
+
+		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
+		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
+
+        /* mind that this is a SST payload, despite the struct it's the same */
+		ssi_payload_PTR sstpyld = (ssi_payload_PTR)payload;
+		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, sup->sup_asid);
+		if (result != NOPROC) 
+		{ /* everything went fine, so we obtained the result of SST the request, now send it back*/
+			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
+		}
+	}
 }

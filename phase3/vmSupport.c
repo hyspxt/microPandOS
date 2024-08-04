@@ -24,7 +24,7 @@ void initSwapStructs(int entryid)
  *        algorithm.
  *
  * @param void
- * @return void
+ * @return int - the free frame index found or the victim page index
  */
 int replacement()
 {
@@ -50,7 +50,7 @@ void askMutex(){
 }
 
 /**
- * @brief Atomically, update a process page table entry, marking it as not valid and
+ * @brief Atomically, update the specified swap pool table, marking it as not valid and
  *        eventually update the TLB.
  *
  * @param void
@@ -86,7 +86,7 @@ void handleFreeFrame(memaddr pageAddr, support_t *sup, int pageNo){
     setSTATUS(getSTATUS() & ~IECON); /* disabling interrupts */
     sup->sup_privatePgTbl[pageNo].pte_entryLO |= VALIDON; /* marking as valid */
     // sup->sup_privatePgTbl[pageNo].pte_entryLO &= ~DIRTYON; /* marking as not dirty */
-    sup->sup_privatePgTbl[pageNo].pte_entryLO &= 0xFFF; /* preserv first 12 bit of entryLO -> reset PFN */
+    sup->sup_privatePgTbl[pageNo].pte_entryLO &= 0xFFF; /* preserve first 12 bit of entryLO -> reset PFN */
     sup->sup_privatePgTbl[pageNo].pte_entryLO |= pageAddr; /* setting the frame */
 
     /* updatin TLB */
