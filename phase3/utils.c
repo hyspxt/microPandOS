@@ -93,6 +93,7 @@ void printDevice(int asid, int device){
                     value = PRINTCHR | (((devregtr)*s) << 8);
                     break;
             }
+            /* prepping the doio structs for requesting doio service to sssi */
             ssi_do_io_t do_io = {
                 .commandAddr = command,
                 .commandValue = value,

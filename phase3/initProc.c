@@ -130,20 +130,31 @@ void initSST(int asid){
     ramtop = nextFrame(ramtop);
 }
 
+/**
+ * @brief Initialize the device processes, which will be used to handle
+ *        the print function of the terminal and printer devices.
+ *        Mind that the OS can handle max UPROC devices.
+ *          
+ * @param int asid - address space identifier
+ * @param int devNo - device number (IL_PRINTER or IL_TERMINAL)
+ * @return void
+ */
 void initDeviceProc(int asid, int devNo){
-    if (devNo == IL_PRINTER){
-        printerState[asid].pc_epc = printerState[asid].reg_t9 = (memaddr) PLACEHOLDER;
-        printerState[asid].reg_sp = (memaddr) ramtop;
-        printerState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
-        printerState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
-        printerPcbs[asid] = create_process(&printerState[asid], &supStruct[asid]);
-    }
-    else if (devNo == IL_TERMINAL){
-        terminalState[asid].pc_epc = terminalState[asid].reg_t9 = (memaddr) PLACEHOLDER;
-        terminalState[asid].reg_sp = (memaddr) ramtop;
-        terminalState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
-        terminalState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
-        terminalPcbs[asid] = create_process(&terminalState[asid], &supStruct[asid]);
+    switch (devNo){
+        case IL_PRINTER:
+            printerState[asid].pc_epc = printerState[asid].reg_t9 = (memaddr) printDevice(asid, IL_PRINTER);
+            printerState[asid].reg_sp = (memaddr) ramtop;
+            printerState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
+            printerState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
+            printerPcbs[asid] = create_process(&printerState[asid], &supStruct[asid]);
+            break;
+        case IL_TERMINAL:
+            terminalState[asid].pc_epc = terminalState[asid].reg_t9 = (memaddr) printDevice(asid, IL_TERMINAL);
+            terminalState[asid].reg_sp = (memaddr) ramtop;
+            terminalState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
+            terminalState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
+            terminalPcbs[asid] = create_process(&terminalState[asid], &supStruct[asid]);
+            break;
     }
 }
 
