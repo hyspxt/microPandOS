@@ -8,7 +8,7 @@
  *
  * @return void
  */
-void supExceptionHandler(state_t *excState){
+void supSyscallHandler(state_t *excState){
     unsigned int syscallCode = excState->reg_a0;
     unsigned int dest = excState->reg_a1;
         switch (syscallCode)
@@ -39,14 +39,16 @@ void supExceptionHandler(state_t *excState){
  * @param void
  * @return void
  */
-void programTrapHandler(state_t *excState, int releaseMutex){
+void programTrapHandler(state_t *excState){
     /* first of all, if the calling process is the mutex holder
     we need to release it before the termination, otherwise the 
     mutex will be locked indefinetely */
-    if (current_process == mutex_rcvr || releaseMutex) /* mind that mutex_rcvr is the 
+    if (current_process == mutex_recvr) /* mind that mutex_rcvr is the 
     mutex holder and swap_mutex is the mutex giver/releaser */
         SYSCALL(SENDMESSAGE, (unsigned int) swap_mutex, 0, 0); /* send to unblock */
-    terminate(OFF); /* SST killing service */
+    
+    /* kill the sst */
+    sendKillReq();
     LDST(excState);
 }
 
@@ -59,10 +61,10 @@ void programTrapHandler(state_t *excState, int releaseMutex){
  */
 void supExceptionHandler()
 {
-    support_t *supStruct = getSupStruct();
+    support_t *sup = getSupStruct();
     /* can't use EXCEPTION_STATE macro, it's not in BIOSDATAPAGE
     but in sup_exceptState */
-    state_t *excState = &(supStruct->sup_exceptState[GENERALEXCEPT]);
+    state_t *excState = &(sup->sup_exceptState[GENERALEXCEPT]);
     int excCode = (excState->cause & GETEXECCODE) >> CAUSESHIFT;
     switch (excCode)
     {  /* same as nucleus */
@@ -70,7 +72,8 @@ void supExceptionHandler()
         supSyscallHandler(excState);
         break;
     default:
-        programTrapHandler(excState, OFF);
+        excState->pc_epc += WORDLEN;
+        programTrapHandler(excState);
         break;
     }
 }

@@ -51,6 +51,16 @@ support_t *getSupStruct()
 }
 
 
+void sendKillReq(){
+    ssi_payload_t sst_payload = {
+        .service_code = TERMPROCESS,
+        .arg = NULL,
+    };
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&sst_payload, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, 0, 0);
+}
+
+
 /**
  * @brief  Print a string of characters using flash devices on terminal/printer 
  *         devices. The string and its length it's retrieved by the SST with
@@ -60,7 +70,7 @@ support_t *getSupStruct()
  * @param device - identifies type of device (terminal/printer)
  * @return a support struct associated with the process
  */
-void printDevice(int asid, int device){
+void *printDevice(int asid, int device){
     while (1)
     {
         char *msg; /* char that starts the print */
@@ -73,7 +83,7 @@ void printDevice(int asid, int device){
                 command = base + 1; /* COMMAND field p28 pops */
                 data0 = base + 2; /* DATA0 field where to put char to print */
                 break;
-            case IL_TERMINAL: /* pops p.41 for terminals */`
+            case IL_TERMINAL: /* pops p.41 for terminals */
                 base = (devregtr *)(TERM0ADDR); /* base device address for terminal 0 */
                 base += asid * DEVREGLEN; /* offset for the device */
                 /* this because there are 4 (0-3) possible fields in the layout, so
@@ -81,16 +91,18 @@ void printDevice(int asid, int device){
                 command = base + TRANCOMMAND; /* we want TRANSM_COMMAND that is in fact 3rd and last field */
                 break;
         }
-        while (*s != EOS) 
+        klog_print("Printing on device ");
+        klog_print_dec(device); 
+        while (*msg != EOS) 
         { /* iterating until we reach the null-term of the string, char by char */
             devregtr value;
             switch (device){
                 case IL_PRINTER: /* printer transmit the char in data0 over the line */
-                    *data = (unsigned int *) *s;
+                    *data0 = (unsigned int) *msg;
                     value = PRINTCHR;
                     break;
                 case IL_TERMINAL: /* terminal don't use data0 at all */
-                    value = PRINTCHR | (((devregtr)*s) << 8);
+                    value = PRINTCHR | (((devregtr)*msg) << 8);
                     break;
             }
             /* prepping the doio structs for requesting doio service to sssi */
@@ -107,7 +119,7 @@ void printDevice(int asid, int device){
 
             if ((status & TERMSTATMASK) != RECVD)
                 PANIC();
-            s++;
+            msg++;
         } /* unblock ssi */
         SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
     }

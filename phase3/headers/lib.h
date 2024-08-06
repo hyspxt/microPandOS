@@ -13,9 +13,11 @@ extern state_t uProcState[UPROCMAX];
 extern support_t supStruct[UPROCMAX];
 extern swap_t swapPoolTable[POOLSIZE];
 
-extern pcb_PTR printerPcbs[DEVPERINT];
-extern pcb_PTR terminalPcbs[DEVPERINT];
-extern pcb_PTR swap_mutex, testPcb;
+extern pcb_PTR printerPcbs[UPROCMAX];
+extern pcb_PTR terminalPcbs[UPROCMAX];
+extern pcb_PTR sstPcbs[UPROCMAX];
+extern pcb_PTR uproc[UPROCMAX];
+extern pcb_PTR swap_mutex, testPcb, mutex_recvr;
 
 extern void test();
 
@@ -26,9 +28,11 @@ void initSupportStruct(int);
 void mutex();
 memaddr nextFrame(memaddr);
 void initDeviceProc(int, int);
+extern void (*terminals[8])();
+extern void (*printers[8])();
 
 /* SST module */
-void terminate(int);
+void terminate(int, int);
 void writePrinter(int, sst_print_PTR);
 void writeTerminal(int, sst_print_PTR);
 void SST();
@@ -39,6 +43,8 @@ unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 int replacement();
 void initSwapStructs(int);
 void pager();
+void freeAndKill(int);
+void askMutex();
 
 /* sysSupport module */
 void supExceptionHandler();
@@ -48,7 +54,8 @@ void programTrapHandler(state_t*);
 /* utils (from p2test) */
 pcb_PTR create_process(state_t*, support_t*);
 support_t *getSupStruct();
-void printDevice(int, int)
+void *printDevice(int, int);
+void sendKillReq();
 
 #endif
 

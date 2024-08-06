@@ -9,17 +9,17 @@
  * @param void
  * @return void
  */
-void terminate(int notify){
+void terminate(int asid, int notify)
+{ /* in case, free the frame */
+    for (int i = 0; i < POOLSIZE; i++){
+        if (swapPoolTable[i].sw_asid == asid)
+            swapPoolTable[i].sw_asid = NOASID;
+    }
     /* since a TerminateProcess kill also the process progeny 
     recursively, one call (that kills the caller) is sufficient */
-    ssi_payload_t sst_payload = {
-        .service_code = TERMPROCESS,
-        .arg = NULL,
-    };  /* if it's NULL, SSI terminate the sender and its UPROC child */
+    sendKillReq(); /* kill the SST */
+    /* if it's NULL, SSI terminate the sender and its UPROC child */
 
-    /* SST termination */
-    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&sst_payload, 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, 0, 0);
     /* communicate the termination to test */
     if(notify)
         SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);
@@ -35,6 +35,8 @@ void terminate(int notify){
  */
 void writePrinter(int asid, sst_print_PTR print)
 { /* the empty response is sent in SST() */
+    if (print->string[print->length] != '\0')
+        print->string[print->length] = '\0'; /* null terminate the string */
     SYSCALL(SENDMESSAGE, (unsigned int) printerPcbs[asid], (unsigned int)print->string, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int) printerPcbs[asid], 0, 0);
 }
@@ -49,6 +51,8 @@ void writePrinter(int asid, sst_print_PTR print)
  */
 void writeTerminal(int asid, sst_print_PTR print)
 { /* the empty response is sent in SST() */
+    if (print->string[print->length] != '\0')
+        print->string[print->length] = '\0'; /* null terminate the string */
     SYSCALL(SENDMESSAGE, (unsigned int) terminalPcbs[asid], (unsigned int)print->string, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int) terminalPcbs[asid], 0, 0);
 }
@@ -73,7 +77,7 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
         res = getTOD();
         break;
     case TERMINATE: /* this should kill both the Uproc and the SST */
-        terminate(ON); /* notify the test */
+        terminate(asid, ON); /* notify the test */
         res = ON;
     case WRITEPRINTER: /* asid - 1 cause the param should be used as a index */
         writePrinter(asid - 1, (sst_print_PTR) arg); 
@@ -84,7 +88,7 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
         res = ON;
         break;
 	default:
-		terminate(OFF);
+		terminate(asid, ON);
 		res = ON;
 		break;
 	}
@@ -101,26 +105,26 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
 void SST()
 { /* The idea is that this process constantly listens to 
     requests done by its children, and then it responds */
-    pcb_PTR sst_child;
     /* get the structures to creating child process */
     support_t *sstSup = getSupStruct();
     int asidIndex = sstSup->sup_asid - 1;
     state_t *sstState = &uProcState[asidIndex];
-`
+
     /* create the child */
-    sst_child = create_process(sstState, sstSup);
+    uproc[asidIndex] = create_process(sstState, sstSup);
 
 	while (1)
 	{   /* SST children (UPROC) must wait for an answer */
 		unsigned int *senderAddr, result;
 		pcb_PTR payload;
-
 		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
+        klog_print("zz");
 		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
 
         /* mind that this is a SST payload, despite the struct it's the same */
 		ssi_payload_PTR sstpyld = (ssi_payload_PTR)payload;
-		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, sup->sup_asid);
+		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, asidIndex);
+        klog_print("DAAAMN");
 		if (result != NOPROC) 
 		{ /* everything went fine, so we obtained the result of SST the request, now send it back*/
 			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);

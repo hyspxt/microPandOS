@@ -1,6 +1,6 @@
 {
     "boot": {
-        "core-file": "kernel.core.umps",
+        "core-file": "/home/hys/microPandOS/kernel.core.umps",
         "load-core-file": true
     },
     "bootstrap-rom": "/usr/share/umps3/coreboot.rom.umps",
@@ -108,9 +108,8 @@
     "num-ram-frames": 128,
     "symbol-table": {
         "asid": 64,
-        "file": "kernel.stab.umps"
+        "file": "/home/hys/microPandOS/kernel.stab.umps"
     },
     "tlb-floor-address": "0x80000000",
     "tlb-size": 16
 }
-
