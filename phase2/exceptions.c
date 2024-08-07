@@ -133,8 +133,8 @@ void passUpOrDie(unsigned int excType)
     }
     else
     { /* the handling is passed up to a specified routine */
-        context_t cxt = current_process->p_supportStruct->sup_exceptContext[excType];
         stateCpy(EXCEPTION_STATE, &current_process->p_supportStruct->sup_exceptState[excType]);
+        context_t cxt = current_process->p_supportStruct->sup_exceptContext[excType];
         LDCXT(cxt.stackPtr, cxt.status, cxt.pc);
     }
 }
@@ -171,6 +171,8 @@ void exceptionHandler()
         syscallHandler();
         break;
     case BREAKEXCEPTION ... ENDPROGTRAPEXC: /* Program Traps */
+        klog_print("\nTHIS IS A POD WITH CODE\n");
+        klog_print_dec(excCode);
         passUpOrDie(GENERALEXCEPT);
         break;
     }

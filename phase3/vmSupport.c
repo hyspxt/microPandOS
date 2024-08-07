@@ -12,7 +12,7 @@ void initSwapStructs(int entryid)
 {
   swapPoolTable[entryid].sw_asid = NOASID;   /* 6bit identifier
       to distinguish the process' kuseg from the others*/
-  swapPoolTable[entryid].sw_pageNo = NOPAGE; /* sw_pageNo is the
+ /* sw_pageNo is the
   virtual page number in the swap pool.*/
 }
 
@@ -63,13 +63,14 @@ void handleOccupiedFrame(int frameIndex)
   /* invaliding page */
   swapPoolTable[frameIndex].sw_pte->pte_entryLO &= ~VALIDON;
   /* updatin TLB */
-  setENTRYHI(swapPoolTable[frameIndex].sw_pte->pte_entryHI);
+  pteEntry_t pte = *swapPoolTable[frameIndex].sw_pte;
+  setENTRYHI(pte.pte_entryHI);
   TLBP(); /* TLBProbe */
   if ((getINDEX() & PRESENTFLAG) == 0)
   { /* not cached */
     /* updating only entryLO cause it's the part of the TLB entry that
     contains the Physical Frame Number -> no need to modify VPN/EntryHI */
-    setENTRYLO(swapPoolTable[frameIndex].sw_pte->pte_entryLO);
+    setENTRYLO(pte.pte_entryLO);
     TLBWI(); /* TLBWrite */
   } /* re-enabling interrupts, immediatly */
   setSTATUS(getSTATUS() | IECON);
@@ -93,13 +94,14 @@ void handleFreeFrame(memaddr pageAddr, support_t *sup, int pageNo)
   sup->sup_privatePgTbl[pageNo].pte_entryLO |= pageAddr; /* setting the frame */
 
   /* updatin TLB */
-  setENTRYHI(sup->sup_privatePgTbl[pageNo].pte_entryHI);
+  pteEntry_t pte = sup->sup_privatePgTbl[pageNo];
+  setENTRYHI(pte.pte_entryHI);
   TLBP(); /* TLBProbe */
   if ((getINDEX() & PRESENTFLAG) == 0)
   { /* not cached */
     /* updating only entryLO cause it's the part of the TLB entry that
     contains the Physical Frame Number -> no need to modify VPN/EntryHI */
-    setENTRYLO(sup->sup_privatePgTbl[pageNo].pte_entryLO);
+    setENTRYLO(pte.pte_entryLO);
     TLBWI(); /* TLBWrite */
   } /* re-enabling interrupts, immediatly */
   setSTATUS(getSTATUS() | IECON);
@@ -204,7 +206,8 @@ void pager()
     memaddr victimPageAddr = (memaddr)SWAPPOOL + (frameIndex * PAGESIZE);
 
     int status; /* status to read after operations of backing stores */
-    if (swapPoolTable[frameIndex].sw_asid != NOASID)
+    swap_t *spte = &(swapPoolTable[frameIndex]);
+    if (spte->sw_asid != NOASID)
     { /* frame currently occupied */
       /* mark page as not valid, atomically disabiliting interrupts */
       /* update also the TLB, if needed */
@@ -220,6 +223,7 @@ void pager()
     /* read the contents from backing store in logical page p */
     status = backingStoreOp(victimPageAddr, sup->sup_asid, p, FLASHREAD);
     if (status != ON){ /* doio should return a "Device Ready" = 1 status */
+      klog_print("\n ciancica: \n");
       SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
       freeAndKill(ON);
     }
@@ -229,6 +233,8 @@ void pager()
     handleFreeFrame(frameIndex, sup, p);
 
     /* release the mutex */
+
+    klog_print("\n subeme: \n");
     SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
     /* return control to retry after the page fault */
     LDST(excState);

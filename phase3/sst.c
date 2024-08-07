@@ -112,7 +112,7 @@ void SST()
 
     /* create the child */
     uproc[asidIndex] = create_process(sstState, sstSup);
-
+    klog_print("SST CREATED");
 	while (1)
 	{   /* SST children (UPROC) must wait for an answer */
 		unsigned int *senderAddr, result;

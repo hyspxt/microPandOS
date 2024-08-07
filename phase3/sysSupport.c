@@ -18,12 +18,10 @@ void supSyscallHandler(state_t *excState){
                 SYSCALL(SENDMESSAGE, (unsigned int) current_process->p_parent, excState->reg_a2, 0);
             else /* otherwise kernel restricted send */
                 SYSCALL(SENDMESSAGE, dest, excState->reg_a2, 0);
-            excState->pc_epc += WORDLEN; /* to avoid infinite loop of SYSCALLs */
             LDST(excState);
             break;
         case RECEIVEMSG: /* kernel restricted recv */
             SYSCALL(RECEIVEMESSAGE, dest, excState->reg_a2, 0);
-            excState->pc_epc += WORDLEN;
             LDST(excState);
             break;
         default:
@@ -61,18 +59,30 @@ void programTrapHandler(state_t *excState){
  */
 void supExceptionHandler()
 {
-    support_t *sup = getSupStruct();
+    support_t *sup;
+    /* get the support struct */
+    ssi_payload_t getsup_payload = {
+        .service_code = GETSUPPORTPTR,
+        .arg = NULL,
+    };
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&getsup_payload), 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&sup), 0);
+   
+
     /* can't use EXCEPTION_STATE macro, it's not in BIOSDATAPAGE
     but in sup_exceptState */
     state_t *excState = &(sup->sup_exceptState[GENERALEXCEPT]);
-    int excCode = (excState->cause & GETEXECCODE) >> CAUSESHIFT;
+     excState->pc_epc += WORDLEN;
+    int excCode = CAUSE_GET_EXCCODE(excState->cause);
+    klog_print("\nException code: ");
+    klog_print_dec(excCode);
+    klog_print("\n");
     switch (excCode)
     {  /* same as nucleus */
     case SYSEXCEPTION:
         supSyscallHandler(excState);
         break;
     default:
-        excState->pc_epc += WORDLEN;
         programTrapHandler(excState);
         break;
     }

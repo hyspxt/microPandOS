@@ -99,7 +99,7 @@ void mutex(){
         senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
         /* give to the pcb that requested, the mutex */
         mutex_recvr = (pcb_PTR) senderAddr;
-        if (mutex_recvr != NULL) /* send a msg to unblock the process */
+        if (mutex_recvr != NULL)/* send a msg to unblock the process */
           SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, 0, 0);
 
         /* listens for a mutex release */
@@ -144,14 +144,14 @@ void initDeviceProc(int asid, int devNo){
         case IL_PRINTER:
             printerState[asid].pc_epc = (memaddr) terminals[asid];
             printerState[asid].reg_sp = (memaddr) ramtop;
-            printerState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
+            printerState[asid].status = ALLOFF | 0x4 | 0xFD00 | TEBITON;
             printerState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
             printerPcbs[asid] = create_process(&printerState[asid], &supStruct[asid]);
             break;
         case IL_TERMINAL:
             terminalState[asid].pc_epc = (memaddr) printers[asid];
             terminalState[asid].reg_sp = (memaddr) ramtop;
-            terminalState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
+            terminalState[asid].status = ALLOFF | 0x4 | 0xFD00 | TEBITON;
             terminalState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
             terminalPcbs[asid] = create_process(&terminalState[asid], &supStruct[asid]);
             break;
