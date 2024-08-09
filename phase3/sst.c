@@ -30,12 +30,12 @@ void terminate(int asid, int notify)
  * @param print - the struct containing the string and its length
  * @return void
  */
-void writePrinter(int asid, sst_print_PTR print)
+void writePrinter(int asid, sst_print_PTR print, pcb_PTR sender)
 { /* the empty response is sent in SST() */
-    if (print->string[print->length] != '\0')
-        print->string[print->length] = '\0'; /* null terminate the string */
-    SYSCALL(SENDMESSAGE, (unsigned int) printerPcbs[asid], (unsigned int)print->string, 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int) printerPcbs[asid], 0, 0);
+    if (print->string[print->length] != EOS)
+        print->string[print->length] = EOS;
+    printDevice(asid, IL_PRINTER, print);
+    SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
 }
 
 /**
@@ -46,12 +46,12 @@ void writePrinter(int asid, sst_print_PTR print)
  * @param print - the struct containing the string and its length
  * @return void
  */
-void writeTerminal(int asid, sst_print_PTR print)
+void writeTerminal(int asid, sst_print_PTR print, pcb_PTR sender)
 { /* the empty response is sent in SST() */
-    if (print->string[print->length] != '\0')
-        print->string[print->length] = '\0'; /* null terminate the string */
-    SYSCALL(SENDMESSAGE, (unsigned int) terminalPcbs[asid], (unsigned int)print->string, 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int) terminalPcbs[asid], 0, 0);
+    if (print->string[print->length] != EOS)
+        print->string[print->length] = EOS;
+    printDevice(asid, IL_TERMINAL, print);
+    
 }
 
 
@@ -77,11 +77,11 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
         terminate(asid, ON); /* notify the test */
         res = ON;
     case WRITEPRINTER: /* asid - 1 cause the param should be used as a index */
-        writePrinter(asid - 1, (sst_print_PTR) arg); 
+        writePrinter(asid, (sst_print_PTR) arg, sender); 
         res = ON;
         break;
     case WRITETERMINAL:
-        writeTerminal(asid - 1, (sst_print_PTR) arg);
+        writeTerminal(asid, (sst_print_PTR) arg, sender);
         res = ON;
         break;
 	default:

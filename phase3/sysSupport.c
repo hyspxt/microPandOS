@@ -43,15 +43,15 @@ void programTrapHandler()
             current_process->p_supportStruct->sup_asid)
             swapPoolTable[i].sw_asid = NOASID;
     }
+
+            if (current_process == mutex_recvr)
+        {                                                         /* mind that mutex_rcvr is the
+                                                            mutex holder and swap_mutex is the mutex giver/releaser */
+            SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0); /* send to unblock */
+        }
     /* first of all, if the calling process is the mutex holder
     we need to release it before the termination, otherwise the
     mutex will be locked indefinetely */
-    if (current_process == mutex_recvr)
-    { /* mind that mutex_rcvr is the
-mutex holder and swap_mutex is the mutex giver/releaser */
-        klog_print_hex((unsigned int)current_process);
-        SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0); /* send to unblock */
-    }
 
     /* kill the sst */
     sendKillReq();
@@ -73,15 +73,13 @@ void supExceptionHandler()
     state_t *excState = &(sup->sup_exceptState[GENERALEXCEPT]);
     excState->pc_epc += WORDLEN;
     int excCode = CAUSE_GET_EXCCODE(excState->cause);
-    klog_print("\nException code: ");
-    klog_print_dec(excCode);
-    klog_print("\n");
     switch (excCode)
     { /* same as nucleus */
     case SYSEXCEPTION:
         supSyscallHandler(excState);
         break;
     default:
+
         programTrapHandler();
         break;
     }

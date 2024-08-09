@@ -95,26 +95,21 @@ void initSupportStruct()
  */
 void mutex()
 {
-    unsigned int senderAddr, retr;
+    unsigned int senderAddr;
     while (1)
     {
-
         /* listens for a mutex request */
         senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
-        klog_print("Received mutex req from \n");
-        klog_print_hex(senderAddr);
+        // klog_print("Received mutex req from \n");
+        // klog_print_hex(senderAddr);
         /* give to the pcb that requested, the mutex */
 
         /* send a msg to unblock the process */
-        SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, 0, 0);
         mutex_recvr = (pcb_PTR)senderAddr;
-        klog_print("\n Mutex sent to: \n ");
-        klog_print_hex((unsigned int)mutex_recvr);
+        SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, 0, 0);
 
         /* listens for a mutex release */
-        retr = SYSCALL(RECEIVEMESSAGE, (unsigned int)senderAddr, 0, 0);
-        klog_print("\n Mutex returned from: \n");
-        klog_print_hex(retr);
+        SYSCALL(RECEIVEMESSAGE, (unsigned int)senderAddr, 0, 0);
     }
 }
 
@@ -157,14 +152,14 @@ void initDeviceProc(int asid, int devNo)
     switch (devNo)
     {
     case IL_PRINTER:
-        printerState[asid].pc_epc = (memaddr)terminals[asid];
+        // printerState[asid].pc_epc = (memaddr)terminals[asid];
         printerState[asid].reg_sp = (memaddr)ramtop;
         printerState[asid].status = ALLOFF | 0x4 | 0xFD00 | TEBITON;
         printerState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
         printerPcbs[asid] = create_process(&printerState[asid], &supStruct[asid]);
         break;
     case IL_TERMINAL:
-        terminalState[asid].pc_epc = (memaddr)printers[asid];
+        // terminalState[asid].pc_epc = (memaddr)printers[asid];
         terminalState[asid].reg_sp = (memaddr)ramtop;
         terminalState[asid].status = ALLOFF | 0x4 | 0xFD00 | TEBITON;
         terminalState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
@@ -174,36 +169,7 @@ void initDeviceProc(int asid, int devNo)
     ramtop -= PAGESIZE;
 }
 
-/*
- * Wrapper delle funzioni di stampa per poterle assegnare ai program counter dei
- * vari device.
- */
-void print_term0() { printDevice(0, IL_TERMINAL); }
-void print_term1() { printDevice(1, IL_TERMINAL); }
-void print_term2() { printDevice(2, IL_TERMINAL); }
-void print_term3() { printDevice(3, IL_TERMINAL); }
-void print_term4() { printDevice(4, IL_TERMINAL); }
-void print_term5() { printDevice(5, IL_TERMINAL); }
-void print_term6() { printDevice(6, IL_TERMINAL); }
-void print_term7() { printDevice(7, IL_TERMINAL); }
 
-void printer0() { printDevice(0, IL_PRINTER); }
-void printer1() { printDevice(1, IL_PRINTER); }
-void printer2() { printDevice(2, IL_PRINTER); }
-void printer3() { printDevice(3, IL_PRINTER); }
-void printer4() { printDevice(4, IL_PRINTER); }
-void printer5() { printDevice(5, IL_PRINTER); }
-void printer6() { printDevice(6, IL_PRINTER); }
-void printer7() { printDevice(7, IL_PRINTER); }
-
-/*
- * Array di puntatori ai wrapper delle funzioni di stampa per una maggiore
- * comodità durante l'assegnamento al program counter.
- */
-void (*terminals[8])() = {print_term0, print_term1, print_term2, print_term3,
-                          print_term4, print_term5, print_term6, print_term7};
-void (*printers[8])() = {printer0, printer1, printer2, printer3,
-                         printer4, printer5, printer6, printer7};
 
 /**
  * @brief The TLB-Refill event Handler. This type of event is triggered
@@ -264,19 +230,17 @@ void test()
     mutex_s.status = ALLOFF | IECON | IMON | TEBITON;
     ramtop -= PAGESIZE;
     swap_mutex = create_process(&mutex_s, NULL);
-    klog_print("\n Mutex process pid is \n");
-    klog_print_dec(swap_mutex->p_pid);
 
     /* mutex request are now active */
-    for (int i = 0; i < UPROCMAX; i++)
-    {
-        initDeviceProc(i, IL_PRINTER);
-    }
+    // for (int i = 0; i < UPROCMAX; i++)
+    // {
+    //     initDeviceProc(i, IL_PRINTER);
+    // }
 
-    for (int i = 0; i < UPROCMAX; i++)
-    {
-        initDeviceProc(i, IL_TERMINAL);
-    }
+    // for (int i = 0; i < UPROCMAX; i++)
+    // {
+    //     initDeviceProc(i, IL_TERMINAL);
+    // }
 
     initSST();
 
@@ -284,7 +248,6 @@ void test()
     {
         SYSCALL(RECEIVEMESSAGE, (unsigned int)sstPcbs[i], 0, 0);
         klog_print("\n SST process ");
-        klog_print_dec(i);
         klog_print(" terminated \n");
     }
 
@@ -294,5 +257,5 @@ void test()
     };
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&pyld, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, 0, 0);
-    klog_print("Test process terminated");
+    // klog_print("Test process terminated");
 }

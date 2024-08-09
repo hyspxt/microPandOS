@@ -29,13 +29,11 @@ void initSST();
 void mutex();
 memaddr nextFrame(memaddr);
 void initDeviceProc(int, int);
-extern void (*terminals[8])();
-extern void (*printers[8])();
 
 /* SST module */
 void terminate(int, int);
-void writePrinter(int, sst_print_PTR);
-void writeTerminal(int, sst_print_PTR);
+void writePrinter(int, sst_print_PTR, pcb_PTR);
+void writeTerminal(int, sst_print_PTR, pcb_PTR);
 void SST();
 unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
@@ -60,7 +58,7 @@ void programTrapHandler();
 /* utils (from p2test) */
 pcb_PTR create_process(state_t*, support_t*);
 support_t *getSupStruct();
-void *printDevice(int, int);
+void printDevice(int, int, sst_print_PTR);
 void sendKillReq();
 
 #endif
