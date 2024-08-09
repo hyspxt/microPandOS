@@ -163,8 +163,6 @@ void deviceHandler(unsigned int interruptLine)
             status = termReg->transm_status;
             termReg->transm_command = ACK;
         }
-        else
-            PANIC();
     }
     else
     { /* In this case, the device is not terminal, neither transm or recv, so
@@ -178,12 +176,12 @@ void deviceHandler(unsigned int interruptLine)
     if (outPcb != NULL)
     { /* without passing by the ssi, we put the status in the inbox 
         to unlock the i/o process. */
-        softBlockCount--;
         msg_PTR msg = allocMsg();
         msg->m_sender = ssi_pcb;
         msg->m_payload = outPcb->p_s.reg_v0 = status;
         insertMessage(&outPcb->msg_inbox, msg);
         insertProcQ(&readyQueue, outPcb);
+        softBlockCount--;
     }
     exitInterruptHandler();
 }

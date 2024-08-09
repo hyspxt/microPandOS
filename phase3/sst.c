@@ -15,14 +15,11 @@ void terminate(int asid, int notify)
         if (swapPoolTable[i].sw_asid == asid)
             swapPoolTable[i].sw_asid = NOASID;
     }
+    SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);
     /* since a TerminateProcess kill also the process progeny 
     recursively, one call (that kills the caller) is sufficient */
     sendKillReq(); /* kill the SST */
     /* if it's NULL, SSI terminate the sender and its UPROC child */
-
-    /* communicate the termination to test */
-    if(notify)
-        SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);
 }
 
 /**
@@ -112,19 +109,15 @@ void SST()
 
     /* create the child */
     uproc[asidIndex] = create_process(sstState, sstSup);
-    klog_print("SST CREATED");
 	while (1)
 	{   /* SST children (UPROC) must wait for an answer */
-		unsigned int *senderAddr, result;
+		unsigned int senderAddr, result;
 		pcb_PTR payload;
-		SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
-        klog_print("zz");
-		senderAddr = (unsigned int *)EXCEPTION_STATE->reg_v0;
+		senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)&payload, 0);
 
         /* mind that this is a SST payload, despite the struct it's the same */
 		ssi_payload_PTR sstpyld = (ssi_payload_PTR)payload;
 		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, asidIndex);
-        klog_print("DAAAMN");
 		if (result != NOPROC) 
 		{ /* everything went fine, so we obtained the result of SST the request, now send it back*/
 			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);

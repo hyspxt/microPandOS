@@ -28,7 +28,10 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload)
         return DEST_NOT_EXIST;
     else if ((destptr != current_process) && !searchProcQ(destptr, &readyQueue))
     { /* if dest was waiting for a message, we awaken it*/
-        insertProcQ(&readyQueue, destptr);
+        do
+        {
+            insertProcQ(&readyQueue, destptr);
+        } while (searchProcQ(destptr, &readyQueue) == 0);
     }
     insertMessage(&destptr->msg_inbox, msg);
     /* providing 0 as returning value to identify a successful send operation */
@@ -89,7 +92,7 @@ void syscallHandler()
 
     /* We check if the processor is in kernel mode looking up at the bit 1 (of 31) of the status register:
     if is 0, then is in Kernel mode, else it's in user mode. */
-    if ((EXCEPTION_STATE->status & USERPON))
+    if ((EXCEPTION_STATE->status << 30) >> 31)
     { /* We check if that PCB in user-mode checking the status
          in which case, should trigger a Program Trap (PassUp or Die) exception response and the subsequent handler.
          According to princOfOperations, Reserved instruction should be code 10. */
