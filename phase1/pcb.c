@@ -146,9 +146,9 @@ pcb_t *removeProcQ(struct list_head *head)
         return NULL;
     else
     {
-        pcb_t *removed_p = container_of(list_next(head), pcb_t, p_list);
-        list_del(list_next(head));
-        return removed_p;
+        pcb_t *first_pcb = container_of(list_next(head), pcb_t, p_list);       
+        list_del(&(first_pcb->p_list)); 
+        return first_pcb;               
     }
 }
 
@@ -250,10 +250,13 @@ pcb_t *outChild(pcb_t *p)
 unsigned int searchProcQ(pcb_PTR p, struct list_head *list)
 {
     pcb_PTR nPcb;
+    pcb_PTR pcb_toCheck = p;
     list_for_each_entry(nPcb, list, p_list)
     {
-        if (nPcb == p)
+        if (nPcb == pcb_toCheck)
             return 1;
+        else if (p == NULL)
+            return 0;
     }
     return 0;
 }

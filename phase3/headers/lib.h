@@ -19,7 +19,8 @@ extern pcb_PTR sstPcbs[UPROCMAX];
 extern pcb_PTR uproc[UPROCMAX];
 extern pcb_PTR swap_mutex, testPcb, mutex_recvr;
 
-extern void test();
+void test();
+extern void print();
 
 /* -- FUNCTIONS PROTOTYPES -- */
 /* init module */
@@ -31,7 +32,7 @@ memaddr nextFrame(memaddr);
 void initDeviceProc(int, int);
 
 /* SST module */
-void terminate(int, int);
+void terminate(int);
 void writePrinter(int, sst_print_PTR, pcb_PTR);
 void writeTerminal(int, sst_print_PTR, pcb_PTR);
 void SST();

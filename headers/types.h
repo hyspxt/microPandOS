@@ -110,4 +110,11 @@ typedef struct swap_t {
     pteEntry_t *sw_pte;    /* page's PTE entry.	*/
 } swap_t;
 
+typedef struct dev_payload_t {
+    int asid;
+    int device;
+    sst_print_PTR print;
+} dev_payload_t, *dev_payload_PTR;
+
+
 #endif

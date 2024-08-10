@@ -95,6 +95,54 @@ void insertDeviceQ(unsigned int interruptLine, pcb_PTR sender)
 	}
 }
 
+
+void blockInDevice(memaddr deviceCommand, pcb_PTR sender){
+	/* We need to distinguish between terminal and not-terminal devices, that are transm and recv
+	so, according to uMPS3 - Principles of Operation, each device is identified by the interrupt line
+	it is attached to and its device number, an integer in the range 0-7. Important! in order of priority */
+
+	/* If the device isn't a terminal device, then it is a disk, flash, ethernet or printer device
+	   so, we iter on those basing on their identifiers.
+	   According to uMPS3 - Principles of Operation p.29 devices have interrupts pending on interrupt lines 3-7.
+	   That means that when bit i in word j is set to one, then device i attached to interrupt line j + 3 has a pending interrupt. */
+
+	for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++)
+	{
+		/* calculate the address for this device's terminal device register */
+		termreg_t *devAddrBase = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, devNo);
+		if ((unsigned int)&devAddrBase->transm_command == deviceCommand)
+		{
+			sender->blockedOnDevice = devNo;
+			outProcQ(&readyQueue, sender);
+			insertProcQ(&blockedTerminalTransmQueue, sender);
+			return;
+		}
+		else if ((unsigned int)&devAddrBase->recv_command == deviceCommand)
+		{
+			sender->blockedOnDevice = devNo;
+			outProcQ(&readyQueue, sender);
+			insertProcQ(&blockedTerminalRecvQueue, sender);
+			return;
+		}
+	}
+
+	for (unsigned int interruptLine = DEV_IL_START; interruptLine < N_INTERRUPT_LINES - 1; interruptLine++)
+	{
+		for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++)
+		{ /* calculate base address for non-terminal devices */
+			dtpreg_t *devAddrBase = (dtpreg_t *)DEV_REG_ADDR(interruptLine, devNo);
+			if ((unsigned int)&devAddrBase->command == deviceCommand)
+			{
+				sender->blockedOnDevice = devNo;
+				outProcQ(&readyQueue, sender);
+				insertDeviceQ(interruptLine, sender);
+				return;
+			}
+		}
+	}
+}
+
+
 /**
  * @brief Handles the synchronous I/O requests.
  *
@@ -106,50 +154,9 @@ void doio(ssi_do_io_PTR doioPTR, pcb_PTR sender)
 {
 	softBlockCount++;
 	unsigned int deviceCommand = (unsigned int)doioPTR->commandAddr;
-	/* We need to distinguish between terminal and not-terminal devices, that are transm and recv
-	so, according to uMPS3 - Principles of Operation, each device is identified by the interrupt line
-	it is attached to and its device number, an integer in the range 0-7. Important! in order of priority */
-
-	/* If the device isn't a terminal device, then it is a disk, flash, ethernet or printer device
-	   so, we iter on those basing on their identifiers.
-	   According to uMPS3 - Principles of Operation p.29 devices have interrupts pending on interrupt lines 3-7.
-	   That means that when bit i in word j is set to one, then device i attached to interrupt line j + 3 has a pending interrupt. */
-	for (unsigned int interruptLine = DEV_IL_START; interruptLine < N_INTERRUPT_LINES; interruptLine++)
-	{
-		for (unsigned int devNo = 0; devNo < N_DEV_PER_IL; devNo++)
-		{
-			if (interruptLine == IL_TERMINAL)
-			{ /* calculate the address for this device's terminal device register */
-				termreg_t *devAddrBase = (termreg_t *)DEV_REG_ADDR(IL_TERMINAL, devNo);
-				if ((unsigned int)&devAddrBase->transm_command == deviceCommand)
-				{
-					sender->blockedOnDevice = devNo;
-					outProcQ(&readyQueue, sender);
-					insertProcQ(&blockedTerminalTransmQueue, sender);
-					break;
-				}
-				else if ((unsigned int)&devAddrBase->recv_command == deviceCommand)
-				{
-					sender->blockedOnDevice = devNo;
-					outProcQ(&readyQueue, sender);
-					insertProcQ(&blockedTerminalRecvQueue, sender);
-					break;
-				}
-			}
-			else
-			{ /* calculate base address for non-terminal devices */
-				dtpreg_t *devAddrBase = (dtpreg_t *)DEV_REG_ADDR(interruptLine, devNo);
-				if ((unsigned int)&devAddrBase->command == deviceCommand)
-				{
-					sender->blockedOnDevice = devNo;
-					outProcQ(&readyQueue, sender);
-					insertDeviceQ(interruptLine, sender);
-					break;
-				}
-			}
-		}
-	}
+	blockInDevice(deviceCommand, sender);
 	*(doioPTR->commandAddr) = doioPTR->commandValue;
+	
 }
 
 /**
@@ -173,7 +180,8 @@ unsigned int getCPUTime(pcb_PTR sender)
 unsigned int getTOD()
 {
 	unsigned int TOD_LOAD;
-	return (STCK(TOD_LOAD));
+	STCK(TOD_LOAD);
+	return (TOD_LOAD);
 }
 
 /**

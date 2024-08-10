@@ -24,12 +24,12 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload)
     msg->m_sender = senderptr;
     msg->m_payload = payload;
 
-    if (searchProcQ(destptr, &pcbFree_h))
+    if (senderptr == NULL || searchProcQ(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
     else if ((destptr != current_process) && !searchProcQ(destptr, &readyQueue))
     { /* if dest was waiting for a message, we awaken it*/
         do
-        {
+        {  
             insertProcQ(&readyQueue, destptr);
         } while (searchProcQ(destptr, &readyQueue) == 0);
     }
@@ -68,7 +68,7 @@ void recv(unsigned int sender, unsigned int payload)
     else
     { /* putting sender address in v0 register as returning value of recv */
         EXCEPTION_STATE->reg_v0 = (unsigned int)msg->m_sender;
-        if (msg->m_payload != 0 && payload != 0)
+        if (payload != 0)
         { /* we check if the payload should be ignored */
             unsigned int *recvd = (unsigned int *)payload;
             *recvd = msg->m_payload;
@@ -174,8 +174,6 @@ void exceptionHandler()
         syscallHandler();
         break;
     case BREAKEXCEPTION ... ENDPROGTRAPEXC: /* Program Traps */
-        klog_print("\nTHIS IS A POD WITH CODE\n");
-        klog_print_dec(excCode);
         passUpOrDie(GENERALEXCEPT);
         break;
     }

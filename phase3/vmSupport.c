@@ -11,8 +11,7 @@
 void initSwapStructs(int entryid)
 {
   swapPoolTable[entryid].sw_asid = NOASID;   /* 6bit identifier
-    to distinguish the process' kuseg from the others*/
-  swapPoolTable[entryid].sw_pageNo = NOPAGE; /* sw_pageNo is the
+    to distinguish the process' kuseg from the others*/ /* sw_pageNo is the
 virtual page number in the swap pool.*/
 }
 
@@ -23,7 +22,7 @@ void askMutex()
 }
 
 int pick_frame(){
-  static unsigned int counter = 0;
+  static unsigned int counter = -1;
   for (int i = 0; i < POOLSIZE; i++){
     if (isFrameFree(i))
       return i;
@@ -47,7 +46,7 @@ void updateTLB(pteEntry_t pte){
   setENTRYHI(pte.pte_entryHI);
   TLBP(); /* TLBProbe */
   if ((getINDEX() & PRESENTFLAG) == 0){/* not cached */
-    // TODO: check if this is correct
+    setENTRYHI(pte.pte_entryHI);
     setENTRYLO(pte.pte_entryLO);
     TLBWI(); /* TLBWrite */
   }

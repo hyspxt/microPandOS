@@ -9,7 +9,7 @@
  * @param void
  * @return void
  */
-void terminate(int asid, int notify)
+void terminate(int asid)
 { /* in case, free the frame */
     for (int i = 0; i < POOLSIZE; i++){
         if (swapPoolTable[i].sw_asid == asid)
@@ -32,10 +32,15 @@ void terminate(int asid, int notify)
  */
 void writePrinter(int asid, sst_print_PTR print, pcb_PTR sender)
 { /* the empty response is sent in SST() */
-    if (print->string[print->length] != EOS)
-        print->string[print->length] = EOS;
-    printDevice(asid, IL_PRINTER, print);
-    SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
+
+    dev_payload_t payload = {
+        .asid = asid,
+        .device = IL_PRINTER,
+        .print = print,
+    };
+    // SYSCALL(SENDMESSAGE, (unsigned int)terminalPcbs[asid], (unsigned int)(&payload), 0);
+    SYSCALL(SENDMESSAGE, (unsigned int)printerPcbs[asid], (unsigned int) print->string, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)printerPcbs[asid], 0, 0);
 }
 
 /**
@@ -48,10 +53,36 @@ void writePrinter(int asid, sst_print_PTR print, pcb_PTR sender)
  */
 void writeTerminal(int asid, sst_print_PTR print, pcb_PTR sender)
 { /* the empty response is sent in SST() */
-    if (print->string[print->length] != EOS)
-        print->string[print->length] = EOS;
-    printDevice(asid, IL_TERMINAL, print);
-    
+    dev_payload_t payload = {
+        .asid = asid,
+        .device = IL_TERMINAL,
+        .print = print,
+    };
+    SYSCALL(SENDMESSAGE, (unsigned int)terminalPcbs[asid], (unsigned int) print->string, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)terminalPcbs[asid], 0, 0);
+}
+
+unsigned int sst_write(unsigned int asid, unsigned int device_type,
+                       sst_print_t *payload) {
+  if (payload->string[payload->length] != '\0')
+    payload->string[payload->length] = '\0';
+
+  pcb_t *dest = NULL;
+  switch (device_type) {
+  case 6:
+    dest = printerPcbs[asid];
+    break;
+  case 7:
+    dest = terminalPcbs[asid];
+    break;
+  default:
+    break;
+  }
+
+  SYSCALL(SENDMESSAGE, (unsigned int)dest, (unsigned int)payload->string, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int)dest, 0, 0);
+
+  return 1;
 }
 
 
@@ -74,19 +105,20 @@ unsigned int SSTRequest(pcb_PTR sender, unsigned int service, void *arg, int asi
         res = getTOD();
         break;
     case TERMINATE: /* this should kill both the Uproc and the SST */
-        terminate(asid, ON); /* notify the test */
+        terminate(asid); /* notify the test */
         res = ON;
     case WRITEPRINTER: /* asid - 1 cause the param should be used as a index */
-        writePrinter(asid, (sst_print_PTR) arg, sender); 
-        res = ON;
+        // writePrinter(asid, (sst_print_PTR) arg, sender); 
+        // res = ON;
+        res = sst_write(asid, 6, (sst_print_t *)arg);
         break;
     case WRITETERMINAL:
-        writeTerminal(asid, (sst_print_PTR) arg, sender);
-        res = ON;
+        // writeTerminal(asid, (sst_print_PTR) arg, sender);
+        // res = ON;
+        res =  sst_write(asid, 7, (sst_print_t *)arg);
         break;
 	default:
-		terminate(asid, ON);
-		res = ON;
+		terminate(asid);
 		break;
 	}
 	return res;
@@ -104,11 +136,10 @@ void SST()
     requests done by its children, and then it responds */
     /* get the structures to creating child process */
     support_t *sstSup = getSupStruct();
-    int asidIndex = sstSup->sup_asid - 1;
-    state_t *sstState = &uProcState[asidIndex];
+    state_t *sstState = &uProcState[sstSup->sup_asid - 1];
 
     /* create the child */
-    uproc[asidIndex] = create_process(sstState, sstSup);
+    create_process(sstState, sstSup);
 	while (1)
 	{   /* SST children (UPROC) must wait for an answer */
 		unsigned int senderAddr, result;
@@ -117,10 +148,8 @@ void SST()
 
         /* mind that this is a SST payload, despite the struct it's the same */
 		ssi_payload_PTR sstpyld = (ssi_payload_PTR)payload;
-		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, asidIndex);
-		if (result != NOPROC) 
-		{ /* everything went fine, so we obtained the result of SST the request, now send it back*/
-			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
-		}
+		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, sstSup->sup_asid - 1);
+        /* everything went fine, so we obtained the result of SST the request, now send it back*/
+	    SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
 	}
 }

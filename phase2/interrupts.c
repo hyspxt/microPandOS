@@ -46,8 +46,6 @@ void intervalTimerHandler()
         softBlockCount--;
         awknPcb = removeProcQ(&pseudoClockQueue);
     }
-    if (!emptyProcQ(&pseudoClockQueue))
-        PANIC();
     exitInterruptHandler();
 }
 

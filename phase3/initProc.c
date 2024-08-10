@@ -98,6 +98,7 @@ void mutex()
     unsigned int senderAddr;
     while (1)
     {
+
         /* listens for a mutex request */
         senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
         // klog_print("Received mutex req from \n");
@@ -110,6 +111,19 @@ void mutex()
 
         /* listens for a mutex release */
         SYSCALL(RECEIVEMESSAGE, (unsigned int)senderAddr, 0, 0);
+
+    }
+}
+
+void device()
+{
+    while (1)
+    {
+        dev_payload_PTR payload;
+        unsigned int sender;
+        sender = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)(&payload), 0);
+        printDevice(payload->asid, payload->device, payload->print);
+        SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
     }
 }
 
@@ -138,6 +152,39 @@ void initSST()
     }
 }
 
+
+/*
+ * Wrapper delle funzioni di stampa per poterle assegnare ai program counter dei
+ * vari device.
+ */
+void print_term0() { print(0, (unsigned int *)TERM0ADDR); }
+void print_term1() { print(1, (unsigned int *)TERM0ADDR); }
+void print_term2() { print(2, (unsigned int *)TERM0ADDR); }
+void print_term3() { print(3, (unsigned int *)TERM0ADDR); }
+void print_term4() { print(4, (unsigned int *)TERM0ADDR); }
+void print_term5() { print(5, (unsigned int *)TERM0ADDR); }
+void print_term6() { print(6, (unsigned int *)TERM0ADDR); }
+void print_term7() { print(7, (unsigned int *)TERM0ADDR); }
+
+void printer0() { print(0, (unsigned int *)PRINT0ADDR); }
+void printer1() { print(1, (unsigned int *)PRINT0ADDR); }
+void printer2() { print(2, (unsigned int *)PRINT0ADDR); }
+void printer3() { print(3, (unsigned int *)PRINT0ADDR); }
+void printer4() { print(4, (unsigned int *)PRINT0ADDR); }
+void printer5() { print(5, (unsigned int *)PRINT0ADDR); }
+void printer6() { print(6, (unsigned int *)PRINT0ADDR); }
+void printer7() { print(7, (unsigned int *)PRINT0ADDR); }
+
+/*
+ * Array di puntatori ai wrapper delle funzioni di stampa per una maggiore
+ * comodità durante l'assegnamento al program counter.
+ */
+void (*terminals[8])() = {print_term0, print_term1, print_term2, print_term3,
+                          print_term4, print_term5, print_term6, print_term7};
+void (*printers[8])() = {printer0, printer1, printer2, printer3,
+                         printer4, printer5, printer6, printer7};
+
+
 /**
  * @brief Initialize the device processes, which will be used to handle
  *        the print function of the terminal and printer devices.
@@ -152,24 +199,22 @@ void initDeviceProc(int asid, int devNo)
     switch (devNo)
     {
     case IL_PRINTER:
-        // printerState[asid].pc_epc = (memaddr)terminals[asid];
+        printerState[asid].pc_epc = (memaddr)printers[asid];
         printerState[asid].reg_sp = (memaddr)ramtop;
-        printerState[asid].status = ALLOFF | 0x4 | 0xFD00 | TEBITON;
+        printerState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
         printerState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
         printerPcbs[asid] = create_process(&printerState[asid], &supStruct[asid]);
         break;
     case IL_TERMINAL:
-        // terminalState[asid].pc_epc = (memaddr)printers[asid];
+        terminalState[asid].pc_epc = (memaddr)terminals[asid];
         terminalState[asid].reg_sp = (memaddr)ramtop;
-        terminalState[asid].status = ALLOFF | 0x4 | 0xFD00 | TEBITON;
+        terminalState[asid].status = ALLOFF | IEPON | IMON | TEBITON;
         terminalState[asid].entry_hi = (asid + 1) << ASIDSHIFT;
         terminalPcbs[asid] = create_process(&terminalState[asid], &supStruct[asid]);
         break;
     }
     ramtop -= PAGESIZE;
 }
-
-
 
 /**
  * @brief The TLB-Refill event Handler. This type of event is triggered
@@ -232,15 +277,12 @@ void test()
     swap_mutex = create_process(&mutex_s, NULL);
 
     /* mutex request are now active */
-    // for (int i = 0; i < UPROCMAX; i++)
-    // {
-    //     initDeviceProc(i, IL_PRINTER);
-    // }
 
-    // for (int i = 0; i < UPROCMAX; i++)
-    // {
-    //     initDeviceProc(i, IL_TERMINAL);
-    // }
+    for (int i = 0; i < UPROCMAX; i++)
+    {
+        initDeviceProc(i, IL_PRINTER);
+        initDeviceProc(i, IL_TERMINAL);
+    }
 
     initSST();
 

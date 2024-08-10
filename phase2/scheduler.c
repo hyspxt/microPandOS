@@ -9,7 +9,8 @@
  */
 void scheduler()
 {
-    if (emptyProcQ(&readyQueue))
+    current_process = removeProcQ(&readyQueue);
+    if (current_process == NULL)
     { /* Empty Ready Queue case
      Check with process counters if any kind of deadlock situation is happening */
         if (processCount == 1)
@@ -27,7 +28,6 @@ void scheduler()
     else
     { /* The ready queue is not empty
       so dispatch and sets another PCB in the readyQueue to currentProcess. */
-        current_process = removeProcQ(&readyQueue);
         setPLT(TIMESLICE);
         startTOD = getTOD();
         LDST(&(current_process->p_s));

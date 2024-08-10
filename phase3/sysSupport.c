@@ -44,11 +44,11 @@ void programTrapHandler()
             swapPoolTable[i].sw_asid = NOASID;
     }
 
-            if (current_process == mutex_recvr)
-        {                                                         /* mind that mutex_rcvr is the
-                                                            mutex holder and swap_mutex is the mutex giver/releaser */
-            SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0); /* send to unblock */
-        }
+    if (current_process == mutex_recvr)
+    {                                                         /* mind that mutex_rcvr is the
+                                                        mutex holder and swap_mutex is the mutex giver/releaser */
+        SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0); /* send to unblock */
+    }
     /* first of all, if the calling process is the mutex holder
     we need to release it before the termination, otherwise the
     mutex will be locked indefinetely */

@@ -73,7 +73,7 @@ void printDevice(int asid, int device, sst_print_PTR print)
 {
     char *msg = print->string; /* char that starts the print */
     int len = print->length;   /* length of the string */
-    devregtr *base, *command, *data0, status;
+    devregtr *base, *command, *data0, status, value;
     switch (device)
     {
     case IL_PRINTER:                     /* pops p.39 for printers */
@@ -87,12 +87,12 @@ void printDevice(int asid, int device, sst_print_PTR print)
         base += asid * DEVREGLEN;       /* offset for the device */
         /* this because there are 4 (0-3) possible fields in the layout, so
         (0-3) is the field layout for devNo 0, and (4-7) for devNo 1 */
+        data0 = base + 2;
         command = base + TRANCOMMAND; /* we want TRANSM_COMMAND that is in fact 3rd and last field */
         break;
     }
     while (*msg != EOS)
     { /* iterating until we reach the null-term of the string, char by char */
-        devregtr value;
         switch (device)
         {
         case IL_PRINTER: /* printer transmit the char in data0 over the line */
@@ -119,4 +119,62 @@ void printDevice(int asid, int device, sst_print_PTR print)
             PANIC();
         msg++;
     } /* unblock sst */
+}
+
+
+void print(int device_number, unsigned int *base_address) {
+  while (1) {
+    char *s;
+    unsigned int sender;
+    // ricezione richiesta di stampa
+    sender = (unsigned int)SYSCALL(RECEIVEMESSAGE, ANYMESSAGE,
+                                   (unsigned int)(&s), 0);
+
+    unsigned int *base =
+        base_address + 4 * device_number; // indirizzo base del dispositivo
+    unsigned int *command;
+    if (base_address == (unsigned int *)TERM0ADDR)
+      command = base + 3;
+    else
+      command = base + 1;
+    unsigned int *data0 = base + 2; // per stampanti
+    unsigned int status;
+
+    while (*s != EOS) // stampo finchè non incontro il terminatore della stringa
+    {
+      unsigned int value;
+      if (base_address == (unsigned int *)TERM0ADDR)
+        value = PRINTCHR | (((unsigned int)*s) << 8);
+      else {
+        // caricamento registro data0 per le stampanti
+        value = PRINTCHR;
+        *data0 = (unsigned int)*s;
+      }
+
+      // mando la DOIO a SSI per fare la print di un singolo char
+      ssi_do_io_t do_io = {
+          .commandAddr = command,
+          .commandValue = value,
+      };
+      ssi_payload_t payload = {
+          .service_code = DOIO,
+          .arg = &do_io,
+      };
+
+      SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
+      SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status),
+              0);
+
+      if (base_address == (unsigned int *)TERM0ADDR &&
+          (status & TERMSTATMASK) != RECVD)
+        PANIC();
+      if (base_address == (unsigned int *)PRINT0ADDR && status != READY)
+        PANIC();
+
+      s++; // passo al char successivo
+    }
+
+    // comunico al sst la fine dell'operazione
+    SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
+  }
 }
