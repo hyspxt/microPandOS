@@ -64,6 +64,9 @@ typedef struct pcb_t
 
     /* if pcb is blocked on some device, this number represent that device */
     unsigned int blockedOnDevice;
+    /* if pcb is blocked on some device, this number represent the type of device */
+    unsigned int deviceType;
+
 } pcb_t, *pcb_PTR;
 
 /* message entry type */

@@ -54,7 +54,7 @@ void programTrapHandler()
     mutex will be locked indefinetely */
 
     /* kill the sst */
-    sendKillReq();
+    sendKillReq(NULL);
 }
 
 /**

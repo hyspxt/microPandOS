@@ -35,10 +35,36 @@ unsigned int createProcess(pcb_PTR parent, ssi_create_process_PTR sup)
  */
 unsigned int isPcbBlockedOnDevice(pcb_PTR sender)
 {
-	return (outProcQ(&blockedTerminalRecvQueue, sender) != NULL || outProcQ(&blockedTerminalTransmQueue, sender) != NULL ||
-			outProcQ(&blockedDiskQueue, sender) != NULL || outProcQ(&blockedFlashQueue, sender) != NULL ||
-			outProcQ(&blockedEthernetQueue, sender) != NULL || outProcQ(&blockedPrinterQueue, sender) != NULL ||
-			outProcQ(&pseudoClockQueue, sender) != NULL);
+	if (sender->blockedOnDevice != -1){ /* pcb is blocked on some device */
+	switch (sender->blockedOnDevice){
+		case IL_TERMINAL:
+			return (outProcQ(&blockedTerminalRecvQueue, sender) != NULL 
+				|| outProcQ(&blockedTerminalTransmQueue, sender) != NULL
+				|| outProcQ(&pseudoClockQueue, sender) != NULL);
+		case IL_DISK:
+			return (outProcQ(&blockedDiskQueue, sender) != NULL 
+			|| outProcQ(&pseudoClockQueue, sender) != NULL);
+		case IL_FLASH:
+			return (outProcQ(&blockedFlashQueue, sender) != NULL 
+			|| outProcQ(&pseudoClockQueue, sender) != NULL);
+		case IL_ETHERNET:
+			return (outProcQ(&blockedEthernetQueue, sender) != NULL 
+			|| outProcQ(&pseudoClockQueue, sender) != NULL);
+		case IL_PRINTER:
+			return (outProcQ(&blockedPrinterQueue, sender) != NULL 
+			|| outProcQ(&pseudoClockQueue, sender) != NULL);
+		default:
+			return (outProcQ(&pseudoClockQueue, sender) != NULL);
+		}
+	}
+	else 
+		return 0;
+
+		// return (outProcQ(&blockedTerminalRecvQueue, sender) != NULL || outProcQ(&blockedTerminalTransmQueue, sender) != NULL ||
+		// 	outProcQ(&blockedDiskQueue, sender) != NULL || outProcQ(&blockedFlashQueue, sender) != NULL ||
+		// 	outProcQ(&blockedEthernetQueue, sender) != NULL || outProcQ(&blockedPrinterQueue, sender) != NULL ||
+		// 	outProcQ(&pseudoClockQueue, sender) != NULL);
+	
 }
 
 /**
@@ -53,8 +79,9 @@ void terminateProcess(pcb_PTR sender)
 {
 	/* iteratively, we explore the PCB tree structure using sender as a root, then recursively we kill his PCB children.
 	This continue while sender has any children. */
-	if (sender == ssi_pcb)
-		PANIC();
+
+	if (sender == NULL)
+		return;
 
 	while (!emptyChild(sender))
 	{
@@ -113,6 +140,7 @@ void blockInDevice(memaddr deviceCommand, pcb_PTR sender){
 		if ((unsigned int)&devAddrBase->transm_command == deviceCommand)
 		{
 			sender->blockedOnDevice = devNo;
+			sender->deviceType = IL_TERMINAL;
 			outProcQ(&readyQueue, sender);
 			insertProcQ(&blockedTerminalTransmQueue, sender);
 			return;
@@ -120,6 +148,7 @@ void blockInDevice(memaddr deviceCommand, pcb_PTR sender){
 		else if ((unsigned int)&devAddrBase->recv_command == deviceCommand)
 		{
 			sender->blockedOnDevice = devNo;
+			sender->deviceType = IL_TERMINAL;
 			outProcQ(&readyQueue, sender);
 			insertProcQ(&blockedTerminalRecvQueue, sender);
 			return;
@@ -134,6 +163,7 @@ void blockInDevice(memaddr deviceCommand, pcb_PTR sender){
 			if ((unsigned int)&devAddrBase->command == deviceCommand)
 			{
 				sender->blockedOnDevice = devNo;
+				sender->deviceType = interruptLine;
 				outProcQ(&readyQueue, sender);
 				insertDeviceQ(interruptLine, sender);
 				return;
@@ -324,6 +354,7 @@ void SSI()
 		if (result != NOPROC) /* NOPROC is provided when requesting service that doesn't provide any pcb */
 		{					  /* everything went fine, so we obtained the result of the request, now send it back*/
 			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
+
 		}
 	}
 }

@@ -9,6 +9,7 @@
 
 
 /* -- VARIABLES -- */
+extern pcb_PTR currentProcess;
 extern state_t uProcState[UPROCMAX];
 extern support_t supStruct[UPROCMAX];
 extern swap_t swapPoolTable[POOLSIZE];
@@ -59,8 +60,9 @@ void programTrapHandler();
 /* utils (from p2test) */
 pcb_PTR create_process(state_t*, support_t*);
 support_t *getSupStruct();
-void printDevice(int, int, sst_print_PTR);
-void sendKillReq();
+void *printDevice(int, int);
+void sendKillReq(pcb_PTR);
+
 
 #endif
 

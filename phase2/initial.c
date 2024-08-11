@@ -105,3 +105,33 @@ int main()
   scheduler();
   return 0;
 }
+
+/**
+ * @brief The TLB-Refill event Handler. This type of event is triggered
+ *        whenever a TLB exception occurs, that is, when we try to access
+ *        a page that is not in the TLB. So, it's a cache-miss event.
+ *        Hence, this handler is responsible for loading the
+ *        missing page table entry and restart the instruction.
+ *        note. Previous definition (for phase2) is found in lib.h, commented.
+ *
+ * @param void
+ * @return int
+ */
+void uTLB_RefillHandler()
+{ /* redefinition of phase2 handler */
+    /* locate the pt entry */
+    state_t *excState = EXCEPTION_STATE;
+    int p = ENTRYHI_GET_VPN(excState->entry_hi);
+    /* this is done due cause it happens that the macro
+    return a out of range (0-31) value */
+
+    p = MIN(p, MAXPAGES - 1);
+
+    /* set the entryhi and entrylo, with supStruct of curr_proc */
+    setENTRYHI(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryHI);
+    setENTRYLO(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryLO);
+    /* write the TLB */
+    TLBWR();
+    /* restart the instruction */
+    LDST(excState);
+}

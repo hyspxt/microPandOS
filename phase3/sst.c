@@ -18,7 +18,9 @@ void terminate(int asid)
     SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);
     /* since a TerminateProcess kill also the process progeny 
     recursively, one call (that kills the caller) is sufficient */
-    sendKillReq(); /* kill the SST */
+    sendKillReq(printerPcbs[asid]);
+    sendKillReq(terminalPcbs[asid]);
+    sendKillReq(NULL); /* kill the SST */
     /* if it's NULL, SSI terminate the sender and its UPROC child */
 }
 
@@ -139,7 +141,7 @@ void SST()
     state_t *sstState = &uProcState[sstSup->sup_asid - 1];
 
     /* create the child */
-    create_process(sstState, sstSup);
+    uproc[sstSup->sup_asid - 1] = create_process(sstState, sstSup);
 	while (1)
 	{   /* SST children (UPROC) must wait for an answer */
 		unsigned int senderAddr, result;
