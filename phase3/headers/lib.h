@@ -4,6 +4,7 @@
 /* -- NECESSARY LIBRARIES -- */
 #include "../../phase2/headers/lib.h"
 
+
 /* -- MACROS -- */
 
 
@@ -60,7 +61,7 @@ void programTrapHandler();
 /* utils (from p2test) */
 pcb_PTR create_process(state_t*, support_t*);
 support_t *getSupStruct();
-void *printDevice(int, int);
+void printDevice(int, int);
 void sendKillReq(pcb_PTR);
 
 

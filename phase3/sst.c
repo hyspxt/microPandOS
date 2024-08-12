@@ -5,7 +5,6 @@
     These can be requested by the UProc children.
 */
 
-
 /**
  * @brief Terminate the calling process. Wrapper for the 
  *        TerminateProcess service. Causes the termination of the
@@ -17,7 +16,7 @@
 void terminate(int asid)
 { /* in case, free the frames */
     for (int i = 0; i < POOLSIZE; i++){
-        if (swapPoolTable[i].sw_asid == asid)
+        if (swapPoolTable[i].sw_asid == asid) 
             swapPoolTable[i].sw_asid = NOASID;
     } /* notify the termination */
     SYSCALL(SENDMESSAGE, (unsigned int) testPcb, 0, 0);

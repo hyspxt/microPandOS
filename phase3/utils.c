@@ -37,7 +37,7 @@ pcb_PTR create_process(state_t *s, support_t *sup)
  *        struct of current_process, that will be inherited by its child.
  *
  * @param void
- * @return 
+ * @return
  */
 support_t *getSupStruct()
 { /* Protocol: send a msg to ssi -> await for response -> return sup */
@@ -78,59 +78,57 @@ void sendKillReq(pcb_PTR p)
  * @param deviceType - identifies type of device (terminal/printer)
  * @return void
  */
-void *printDevice(int asid, int deviceType) {
-  while (1) {
-    char *msg; /* char that starts the print */
-    devregtr *base, *command, *data0, status, value; /* device register values */
-
-    /* get the sst_print_t pointer in which we found the string to print, 
-    the message is sent by the writeX, where X is the device type */
-    unsigned int sender = (unsigned int)SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)(&msg), 0);
-    switch (deviceType)
+void printDevice(int asid, int deviceType)
+{
+    while (1)
     {
-    case IL_PRINTER:                     /* pops p.39 for printers */
-        base = (devregtr *)(PRINT0ADDR); /* base device address for printer */
-        base += asid * DEVREGLEN;        /* offset for the device */
-        command = base + 1;              /* COMMAND field p28 pops */
-        data0 = base + 2;                /* DATA0 field where to put char to print */
-        break;
-    case IL_TERMINAL:                   /* pops p.41 for terminals */
-        base = (devregtr *)(TERM0ADDR); /* base device address for terminal 0 */
-        base += asid * DEVREGLEN;       /* offset for the device */
-        /* this because there are 4 (0-3) possible fields in the layout, so
-        (0-3) is the field layout for devNo 0, and (4-7) for devNo 1 */
-        data0 = base + 2; /* we want TRANSM_COMMAND that is in fact 3rd and last field */
-        command = base + TRANCOMMAND; 
-        break;
-    }
-    while (*msg != EOS) 
-    { /* iterating until we reach the null-term of the string, char by char */
+        char *msg;                                       /* char that starts the print */
+        devregtr *base, *command, *data0, status, value; /* device register values */
+
+        /* get the sst_print_t pointer in which we found the string to print,
+        the message is sent by the writeX, where X is the device type */
+        unsigned int sender = (unsigned int)SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)(&msg), 0);
         switch (deviceType)
         {
-        case IL_PRINTER: /* printer transmit the char in data0 over the line */
-            *data0 = (unsigned int)*msg;
-            value = PRINTCHR;
+        case IL_PRINTER:                     /* pops p.39 for printers */
+            base = (devregtr *)(PRINT0ADDR); /* base device address for printer */
+            base += asid * DEVREGLEN;        /* offset for the device */
+            command = base + 1;              /* COMMAND field p28 pops */
+            data0 = base + 2;                /* DATA0 field where to put char to print */
             break;
-        case IL_TERMINAL: /* terminal don't use data0 at all */
-            value = PRINTCHR | (((devregtr)*msg) << 8);
+        case IL_TERMINAL:                   /* pops p.41 for terminals */
+            base = (devregtr *)(TERM0ADDR); /* base device address for terminal 0 */
+            base += asid * DEVREGLEN;       /* offset for the device */
+            /* this because there are 4 (0-3) possible fields in the layout, so
+            (0-3) is the field layout for devNo 0, and (4-7) for devNo 1 */
+            data0 = base + 2; /* we want TRANSM_COMMAND that is in fact 3rd and last field */
+            command = base + TRANCOMMAND;
             break;
-        } /* prepping the doio payload for requesting doio service to sssi */
-        ssi_do_io_t do_io = {
-            .commandAddr = command,
-            .commandValue = value,
-        };
-        ssi_payload_t payload = {
-            .service_code = DOIO,
-            .arg = &do_io,
-        };
-        SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
-        SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
-
-      msg++;
-    } /* unblock sst */
-    SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
-  }
+        }
+        while (*msg != EOS)
+        { /* iterating until we reach the null-term of the string, char by char */
+            switch (deviceType)
+            {
+            case IL_PRINTER: /* printer transmit the char in data0 over the line */
+                *data0 = (unsigned int)*msg;
+                value = PRINTCHR;
+                break;
+            case IL_TERMINAL: /* terminal don't use data0 at all */
+                value = PRINTCHR | (((devregtr)*msg) << 8);
+                break;
+            } /* prepping the doio payload for requesting doio service to sssi */
+            ssi_do_io_t do_io = {
+                .commandAddr = command,
+                .commandValue = value,
+            };
+            ssi_payload_t payload = {
+                .service_code = DOIO,
+                .arg = &do_io,
+            };
+            SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
+            SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
+            msg++;
+        } /* unblock sst */
+        SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
+    }
 }
-
-
-

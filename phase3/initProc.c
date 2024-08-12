@@ -1,5 +1,11 @@
 #include "./headers/lib.h"
 
+
+/*
+    This module contains the test and initialization functions that will be 
+    called by the Nucleus. The test function will initialize the SST and UPROCS.
+*/
+
 /* information that should be added to the Support
 structure that is pointed by a U-Proc. To be created, a
 PCB needs its state and support struct */
@@ -23,26 +29,54 @@ pcb_PTR testPcb;
 
 memaddr ramtop; /* mind that grow downwards */
 
+// struct list_head freeSupStructs;
+// support_t *allocateSupStructs{
+//     support_t *sup = container_of(freeSupStructs.next, support_t, s_list);
+//     list_del(freeSupStructs.next);
+//     return sup;
+// }
+
+// void freeSupStructs(support_t *sup){
+//     list_add_tail(&sup->s_list, &freeSupStructs);
+// }
+
+
 /* pointer functions which address will be assigned to pc_epc field in pcb
    associated with peripheral devices (IL_TERMINAL and IL_PRINTER).
    IL_FLASH will be treated as backing store for uprocs */
-void (*printer0()) { printDevice(0, IL_PRINTER); return (void *)0;}
-void (*printer1()) { printDevice(1, IL_PRINTER); return (void *)0;}
-void (*printer2()) { printDevice(2, IL_PRINTER); return (void *)0;}
-void (*printer3()) { printDevice(3, IL_PRINTER); return (void *)0;}
-void (*printer4()) { printDevice(4, IL_PRINTER); return (void *)0;}
-void (*printer5()) { printDevice(5, IL_PRINTER); return (void *)0;}
-void (*printer6()) { printDevice(6, IL_PRINTER); return (void *)0;}
-void (*printer7()) { printDevice(7, IL_PRINTER); return (void *)0;}
+void (*printer0()) { 
+    printDevice(0, IL_PRINTER); return (void *)0;}
+void (*printer1()) {
+    printDevice(1, IL_PRINTER); return (void *)0;}
+void (*printer2()) {
+    printDevice(2, IL_PRINTER); return (void *)0;}
+void (*printer3()) {
+    printDevice(3, IL_PRINTER); return (void *)0;}
+void (*printer4()) {
+    printDevice(4, IL_PRINTER); return (void *)0;}
+void (*printer5()) {
+    printDevice(5, IL_PRINTER); return (void *)0;}
+void (*printer6()) {
+    printDevice(6, IL_PRINTER); return (void *)0;}
+void (*printer7()) {
+    printDevice(7, IL_PRINTER); return (void *)0;}
 
-void (*terminal0()) { printDevice(0, IL_TERMINAL); return (void *)0;}
-void (*terminal1()) { printDevice(1, IL_TERMINAL); return (void *)0;}
-void (*terminal2()) { printDevice(2, IL_TERMINAL); return (void *)0;}
-void (*terminal3()) { printDevice(3, IL_TERMINAL); return (void *)0;}
-void (*terminal4()) { printDevice(4, IL_TERMINAL); return (void *)0;}
-void (*terminal5()) { printDevice(5, IL_TERMINAL); return (void *)0;}
-void (*terminal6()) { printDevice(6, IL_TERMINAL); return (void *)0;}
-void (*terminal7()) { printDevice(7, IL_TERMINAL); return (void *)0;}
+void (*terminal0()) {
+    printDevice(0, IL_TERMINAL); return (void *)0;}
+void (*terminal1()) {
+    printDevice(1, IL_TERMINAL); return (void *)0;}
+void (*terminal2()) {
+    printDevice(2, IL_TERMINAL); return (void *)0;}
+void (*terminal3()) {
+    printDevice(3, IL_TERMINAL); return (void *)0;}
+void (*terminal4()) {
+    printDevice(4, IL_TERMINAL); return (void *)0;}
+void (*terminal5()) {
+    printDevice(5, IL_TERMINAL); return (void *)0;}
+void (*terminal6()) {
+    printDevice(6, IL_TERMINAL); return (void *)0;}
+void (*terminal7()) {
+    printDevice(7, IL_TERMINAL); return (void *)0;}
 
 /**
  * @brief Initialize the user processes (UPROC) which will be used as SST child to write/read
@@ -99,8 +133,8 @@ void initSupportStruct()
         {
             supStruct[asid].sup_privatePgTbl[i].pte_entryHI = KUSEG + (i << VPNSHIFT) + ((asid + 1) << ASIDSHIFT);
             supStruct[asid].sup_privatePgTbl[i].pte_entryLO = DIRTYON;
-        }
-        /* valid bit off and dirty bit on */
+        } /* valid bit off and dirty bit on  */
+        /* entry 31 -> stack page */
         supStruct[asid].sup_privatePgTbl[MAXPAGES - 1].pte_entryHI = (GETSHAREFLAG - PAGESIZE) + ((asid + 1) << ASIDSHIFT);
         supStruct[asid].sup_privatePgTbl[MAXPAGES - 1].pte_entryLO = DIRTYON;
     }
@@ -129,7 +163,6 @@ void mutex()
 
         /* listens for a mutex release */
         SYSCALL(RECEIVEMESSAGE, (unsigned int)senderAddr, 0, 0);
-
     }
 }
 
@@ -210,9 +243,14 @@ void initDeviceProc(int asid, int devNo)
     ramtop -= PAGESIZE;
 }
 
+/**
+ * @brief Test function that initializes the SST and UPROCS.
+ *
+ * @param void
+ * @return void
+ */
 void test()
-{
-    /* following the structure in p2test -> test func
+{ /* following the structure in p2test -> test func
     no need to alloc this, this is already done in ph2*/
     testPcb = current_process;
 
@@ -240,6 +278,8 @@ void test()
     ramtop -= PAGESIZE;
     swap_mutex = create_process(&mutex_s, NULL);
 
+    initSST();
+
     /* mutex request are now active */
     for (int i = 0; i < UPROCMAX; i++)
     {
@@ -247,15 +287,11 @@ void test()
         initDeviceProc(i, IL_TERMINAL);
     }
 
-    initSST();
-
     for (int i = 0; i < UPROCMAX; i++)
     {
-        klog_print("\n SST process terminated \n");
         SYSCALL(RECEIVEMESSAGE, (unsigned int)sstPcbs[i], 0, 0);
         outProcQ(&readyQueue, sstPcbs[i]);
         freePcb(sstPcbs[i]);
-    }
-
+    } /* kill the test and its progeny */
     sendKillReq(NULL);
 }

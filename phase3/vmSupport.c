@@ -1,5 +1,10 @@
 #include "./headers/lib.h"
 
+/*
+    This module contains functions that support the virtual memory management
+    and address translation in general. This is mainly done by the Pager component.
+*/
+
 /**
  * @brief Initialize the swap pool table, by putting a default value
  *        in swap_t structure fields. Defined here, but used in initProc.c
@@ -51,7 +56,7 @@ int pick_frame()
 /**
  * @brief Check if a frame is free in the swap pool table.
  *
- * @param int - the frame number
+ * @param int i - the frame number
  * @return int - 1 if the frame is free, 0 otherwise
  */
 int isFrameFree(int i)
@@ -141,8 +146,7 @@ int flashOp(int asid, int block, memaddr pageAddr, int operation)
  * @return void
  */
 void pager()
-{
-  /* obtain the sup struct from currproc */
+{ /* obtain the sup struct from currproc */
   support_t *sup = getSupStruct();
   /* detrmine the cause of the TLB exception occurred */
   state_t *supState = &sup->sup_exceptState[PGFAULTEXCEPT];
