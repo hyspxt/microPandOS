@@ -34,8 +34,8 @@ void initDeviceProc(int, int);
 
 /* SST module */
 void terminate(int);
-void writePrinter(int, sst_print_PTR, pcb_PTR);
-void writeTerminal(int, sst_print_PTR, pcb_PTR);
+void writePrinter(int, sst_print_PTR);
+void writeTerminal(int, sst_print_PTR);
 void SST();
 unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
