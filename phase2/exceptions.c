@@ -28,9 +28,7 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload)
         return DEST_NOT_EXIST;
     else if ((destptr != current_process) && !searchProcQ(destptr, &readyQueue))
     { /* if dest was waiting for a message, we awaken it*/
-        // do {
             insertProcQ(&readyQueue, destptr);
-        // } while (searchProcQ(destptr, &readyQueue) == 0);
     }
     insertMessage(&destptr->msg_inbox, msg);
     /* providing 0 as returning value to identify a successful send operation */
