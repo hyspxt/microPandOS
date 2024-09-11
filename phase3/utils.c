@@ -82,12 +82,12 @@ void printDevice(int asid, int deviceType)
 {
     while (1)
     {
-        char *msg;                                       /* char that starts the print */
         devregtr *base, *command, *data0, status, value; /* device register values */
+        char *msg;                                       /* char that starts the print */
 
         /* get the sst_print_t pointer in which we found the string to print,
         the message is sent by the writeX, where X is the device type */
-        unsigned int sender = (unsigned int)SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)(&msg), 0);
+        unsigned int sender = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)(&msg), 0);
         switch (deviceType)
         {
         case IL_PRINTER:                     /* pops p.39 for printers */
@@ -114,7 +114,7 @@ void printDevice(int asid, int deviceType)
                 value = PRINTCHR;
                 break;
             case IL_TERMINAL: /* terminal don't use data0 at all */
-                value = PRINTCHR | (((devregtr)*msg) << 8);
+                value = PRINTCHR | (((devregtr)*msg) << BYTELENGTH);
                 break;
             } /* prepping the doio payload for requesting doio service to sssi */
             ssi_do_io_t do_io = {

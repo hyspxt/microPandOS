@@ -27,9 +27,7 @@ int send(unsigned int sender, unsigned int dest, unsigned int payload)
     if (searchProcQ(destptr, &pcbFree_h))
         return DEST_NOT_EXIST;
     else if ((destptr != current_process) && !searchProcQ(destptr, &readyQueue))
-    { /* if dest was waiting for a message, we awaken it*/
-            insertProcQ(&readyQueue, destptr);
-    }
+        insertProcQ(&readyQueue, destptr);  /* if dest was waiting for a message, we awaken it*/
     insertMessage(&destptr->msg_inbox, msg);
     /* providing 0 as returning value to identify a successful send operation */
     return 0;

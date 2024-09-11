@@ -1,6 +1,5 @@
 #include "./headers/lib.h"
 
-
 /*
     This module contains the test and initialization functions that will be 
     called by the Nucleus. The test function will initialize the SST and UPROCS.
@@ -18,7 +17,7 @@ state_t printerState[UPROCMAX], terminalState[UPROCMAX];
 swap_t swapPoolTable[POOLSIZE];
 /* these process will be test_pcb children */
 pcb_PTR swap_mutex;  /* pcb that listens requests and GIVES the mutex */
-pcb_PTR mutex_recvr; /* pcb that RECEIVE and RELEASE the mutex */
+pcb_PTR mutexRecv; /* pcb that RECEIVE and RELEASE the mutex */
 
 /* specs -> have a process for each device that waits for
 messages and requests the single DoIO to the SSI */
@@ -39,7 +38,6 @@ memaddr ramtop; /* mind that grow downwards */
 // void freeSupStructs(support_t *sup){
 //     list_add_tail(&sup->s_list, &freeSupStructs);
 // }
-
 
 /* pointer functions which address will be assigned to pc_epc field in pcb
    associated with peripheral devices (IL_TERMINAL and IL_PRINTER).
@@ -134,7 +132,7 @@ void initSupportStruct()
             supStruct[asid].sup_privatePgTbl[i].pte_entryHI = KUSEG + (i << VPNSHIFT) + ((asid + 1) << ASIDSHIFT);
             supStruct[asid].sup_privatePgTbl[i].pte_entryLO = DIRTYON;
         } /* valid bit off and dirty bit on  */
-        /* entry 31 -> stack page */
+        /* entry numbered MAXPAGES - 1 -> stack page */
         supStruct[asid].sup_privatePgTbl[MAXPAGES - 1].pte_entryHI = (GETSHAREFLAG - PAGESIZE) + ((asid + 1) << ASIDSHIFT);
         supStruct[asid].sup_privatePgTbl[MAXPAGES - 1].pte_entryLO = DIRTYON;
     }
@@ -158,11 +156,11 @@ void mutex()
         /* give to the pcb that requested, the mutex */
 
         /* send a msg to unblock the process */
-        mutex_recvr = (pcb_PTR)senderAddr;
-        SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, 0, 0);
+        mutexRecv = (pcb_PTR)senderAddr;
+        SYSCALL(SENDMESSAGE, senderAddr, 0, 0);
 
         /* listens for a mutex release */
-        SYSCALL(RECEIVEMESSAGE, (unsigned int)senderAddr, 0, 0);
+        SYSCALL(RECEIVEMESSAGE, senderAddr, 0, 0);
     }
 }
 
@@ -192,7 +190,7 @@ void initSST()
 }
 
 /**
- * @brief Initialize the device processes, which will be used to handle
+ * @brief Initialize the peripheral processes, which will be used to handle
  *        the print function of the terminal and printer devices.
  *        Mind that the OS can handle max UPROC devices.
  *
@@ -200,7 +198,7 @@ void initSST()
  * @param int devNo - device number (IL_PRINTER or IL_TERMINAL)
  * @return void
  */
-void initDeviceProc(int asid, int devNo)
+void initPeripheralProc(int asid, int devNo)
 {
     memaddr assignmentToPc = 0;
     switch (devNo)
@@ -264,33 +262,37 @@ void test()
     for (int i = 0; i < POOLSIZE; i++)
         initSwapStructs(i);
 
+    /* mutex process, tried ssi but another proc is needed */
+    state_t mutexState;
+    mutexState.pc_epc = (memaddr)mutex;
+    mutexState.reg_sp = (memaddr)ramtop;
+    mutexState.status = ALLOFF | IECON | IMON | TEBITON;
+    ramtop -= PAGESIZE;
+    swap_mutex = create_process(&mutexState, NULL);
+
     /* user process (UPROC)/flash initialization - 10.1 specs */
-    /* also SST processes are initialized here (their fathers) */
+    /* also SST processes are initialized here (their fathers), 
+    or better, structures to create them */
     initUProc();
     initSupportStruct();
 
-    /* mutex process, tried ssi but another proc is needed */
-    // swap_mutex = allocPcb(); no need to allocate
-    state_t mutex_s;
-    mutex_s.pc_epc = (memaddr)mutex;
-    mutex_s.reg_sp = (memaddr)ramtop;
-    mutex_s.status = ALLOFF | IECON | IMON | TEBITON;
-    ramtop -= PAGESIZE;
-    swap_mutex = create_process(&mutex_s, NULL);
-
+    /* UPROCMAX SST process initialization */
     initSST();
 
     /* mutex request are now active */
     for (int i = 0; i < UPROCMAX; i++)
     {
-        initDeviceProc(i, IL_PRINTER);
-        initDeviceProc(i, IL_TERMINAL);
+        initPeripheralProc(i, IL_PRINTER);
+        /* apparently only PRINTER7 is used, but for a better generalization
+        we consider UPROCMAX printers */
+        initPeripheralProc(i, IL_TERMINAL);
     }
 
     for (int i = 0; i < UPROCMAX; i++)
     {
         SYSCALL(RECEIVEMESSAGE, (unsigned int)sstPcbs[i], 0, 0);
         outProcQ(&readyQueue, sstPcbs[i]);
+        /* to make sure that all SST are killed when their job is done */
         freePcb(sstPcbs[i]);
     } /* kill the test and its progeny */
     sendKillReq(NULL);

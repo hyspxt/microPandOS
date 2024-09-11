@@ -19,7 +19,7 @@ extern pcb_PTR printerPcbs[UPROCMAX];
 extern pcb_PTR terminalPcbs[UPROCMAX];
 extern pcb_PTR sstPcbs[UPROCMAX];
 extern pcb_PTR uproc[UPROCMAX];
-extern pcb_PTR swap_mutex, testPcb, mutex_recvr;
+extern pcb_PTR swap_mutex, testPcb, mutexRecv;
 
 void test();
 extern void print();
@@ -31,7 +31,7 @@ void initSupportStruct();
 void initSST();
 void mutex();
 memaddr nextFrame(memaddr);
-void initDeviceProc(int, int);
+void initPeripheralProc(int, int);
 
 /* SST module */
 void terminate(int);
@@ -41,7 +41,6 @@ void SST();
 unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
 /* vmSupport module */
-// void uTLB_RefillHandler();
 int pick_frame();
 int isFrameFree(int);
 void interrupts_off();

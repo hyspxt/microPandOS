@@ -1,6 +1,6 @@
 {
     "boot": {
-        "core-file": "/home/hys/microPandOS/kernel.core.umps",
+        "core-file": "/home/hys/Scrivania/microPandOS/kernel.core.umps",
         "load-core-file": true
     },
     "bootstrap-rom": "/usr/share/umps3/coreboot.rom.umps",
@@ -28,15 +28,15 @@
         },
         "flash5": {
             "enabled": true,
-            "file": "/home/hys/microPandOS/testers/fibEight.umps"
+            "file": "/home/hys/Scrivania/microPandOS/testers/fibEight.umps"
         },
         "flash6": {
             "enabled": true,
-            "file": "/home/hys/microPandOS/testers/fibEleven.umps"
+            "file": "/home/hys/Scrivania/microPandOS/testers/fibEleven.umps"
         },
         "flash7": {
             "enabled": true,
-            "file": "/home/hys/microPandOS/testers/printerTest.umps"
+            "file": "/home/hys/Scrivania/microPandOS/testers/printerTest.umps"
         },
         "printer0": {
             "enabled": true,
@@ -108,7 +108,7 @@
     "num-ram-frames": 128,
     "symbol-table": {
         "asid": 64,
-        "file": "/home/hys/microPandOS/kernel.stab.umps"
+        "file": "/home/hys/Scrivania/microPandOS/kernel.stab.umps"
     },
     "tlb-floor-address": "0x80000000",
     "tlb-size": 16

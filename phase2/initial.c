@@ -119,19 +119,19 @@ int main()
  */
 void uTLB_RefillHandler()
 { /* redefinition of phase2 handler */
-    /* locate the pt entry */
-    state_t *excState = EXCEPTION_STATE;
-    int p = ENTRYHI_GET_VPN(excState->entry_hi);
-    /* this is done due cause it happens that the macro
-    return a out of range (0-31) value */
+  /* locate the pt entry */
+  state_t *excState = EXCEPTION_STATE;
+  int p = ENTRYHI_GET_VPN(excState->entry_hi);
+  /* bound check done due cause it happens that the macro
+     return a out of range (0-31) value */
+  if (p > MAXPAGES - 1)
+    p = MAXPAGES - 1;
 
-    p = MIN(p, MAXPAGES - 1);
-
-    /* set the entryhi and entrylo, with supStruct of curr_proc */
-    setENTRYHI(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryHI);
-    setENTRYLO(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryLO);
-    /* write the TLB */
-    TLBWR();
-    /* restart the instruction */
-    LDST(excState);
+  /* set the entryhi and entrylo, with supStruct of curr_proc */
+  setENTRYHI(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryHI);
+  setENTRYLO(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryLO);
+  /* write the TLB */
+  TLBWR();
+  /* restart the instruction */
+  LDST(excState);
 }
