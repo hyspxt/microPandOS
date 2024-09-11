@@ -29,7 +29,6 @@ extern void print();
 void initUProc();
 void initSupportStruct();
 void initSST();
-void mutex();
 memaddr nextFrame(memaddr);
 void initPeripheralProc(int, int);
 
@@ -49,7 +48,7 @@ void updateTLB(pteEntry_t);
 int flashOp(int, int, memaddr, int);
 void initSwapStructs(int);
 void pager();
-void askMutex();
+
 void uTLB_RefillHandler();
 
 /* sysSupport module */
@@ -60,8 +59,11 @@ void programTrapHandler();
 /* utils (from p2test) */
 pcb_PTR create_process(state_t*, support_t*);
 support_t *getSupStruct();
+void mutex();
+void askMutex();
 void printDevice(int, int);
 void sendKillReq(pcb_PTR);
+
 
 
 #endif

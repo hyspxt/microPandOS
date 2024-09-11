@@ -21,20 +21,6 @@ void initSwapStructs(int entryid)
 }
 
 /**
- * @brief Ask for the swap mutex, in order to gain mutual exclusion over the swap pool table.
- *        If another process is using the swap pool table, the current process is blocked (recv)
- *        until the other process releases the mutex.
- *
- * @param void
- * @return void
- */
-void askMutex()
-{
-  SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
-  SYSCALL(RECEIVEMESSAGE, (unsigned int)swap_mutex, 0, 0);
-}
-
-/**
  * @brief Pick a frame from the SPT according to a replacement algorithm.
  *        The algorithm is a simple FIFO, that returns the first free frame found.
  *        If no free frame is found, the algorithm returns the first frame in the pool.
@@ -98,12 +84,12 @@ void interrupts_on()
 void updateTLB(pteEntry_t pte)
 {
   setENTRYHI(pte.pte_entryHI);
-  TLBP(); /* probe the TLB to find a match */
+  TLBP(); /* TLB probing */
   if ((getINDEX() & PRESENTFLAG) == 0)
   { /* not cached */
     setENTRYHI(pte.pte_entryHI);
     setENTRYLO(pte.pte_entryLO);
-    TLBWI(); /* write current entry in entryHI index */
+    TLBWI(); /* write entry */
   }
 }
 
@@ -120,13 +106,14 @@ int flashOp(int asid, int block, memaddr pageAddr, int operation)
   interruptLine 4 is associated with flash devices, and the devNo
   depends on which backing store we're considering (so it depends on UProc asid) */
   unsigned int s;
-  dtpreg_t *flashReg = (dtpreg_t *)DEV_REG_ADDR(FLASHINT, asid - 1);
-  flashReg->data0 = pageAddr; /* load the page address, 4k block to read/write */
+  devreg_t *flashReg = (devreg_t &)DEV_REG_ADDR(FLASHINT, asid - 1);
+  // dtpreg_t *flashReg = (dtpreg_t *)DEV_REG_ADDR(FLASHINT, asid - 1);
+  flashReg->dtp.data0 = pageAddr; /* load the page address, 4k block to read/write */
 
   /* pops p.35 - an operation on a flash device is started by loading the
   appropriate value into the COMMAND field. */
   ssi_do_io_t do_io = { /* doio service */
-      .commandAddr = (unsigned int *)&(flashReg->command),
+      .commandAddr = &(flashReg->dtp.command),
       .commandValue = (block << BYTELENGTH) | operation,
   }; /* write on BLOCKNUMBER (24bit) shifting 1byte sx */
   ssi_payload_t payload = {
@@ -172,7 +159,7 @@ void pager()
     /* update also the TLB, if needed */
     interrupts_off();
     pteEntry_t *victim_pte = spte->sw_pte;
-    victim_pte->pte_entryLO &= (~VALIDON); /* mark the page as not valid */
+    victim_pte->pte_entryLO &= ~VALIDON; /* mark the page as not valid */
     updateTLB(*victim_pte);
     interrupts_on();
 

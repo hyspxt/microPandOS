@@ -139,32 +139,6 @@ void initSupportStruct()
 }
 
 /**
- * @brief Allow a process to ask with message passing the mutex
- *        for accessing the swap pool table. If it can't acquire that mutex,
- *        it will be blocked, until the mutex is released by another pcb
- *        that has acquired it before and therefore is exiting swap pool.
- *
- * @param void
- * @return void
- */
-void mutex()
-{
-    unsigned int senderAddr;
-    while (1)
-    {  /* listens for a mutex request */
-        senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
-        /* give to the pcb that requested, the mutex */
-
-        /* send a msg to unblock the process */
-        mutexRecv = (pcb_PTR)senderAddr;
-        SYSCALL(SENDMESSAGE, senderAddr, 0, 0);
-
-        /* listens for a mutex release */
-        SYSCALL(RECEIVEMESSAGE, senderAddr, 0, 0);
-    }
-}
-
-/**
  * @brief Initialize UPROCMAX SST processes, which will create then the child
  *        user processes. Each SST process will then be delegated to resolve
  *        the requests that the child process submits to it.

@@ -3,9 +3,51 @@ typedef unsigned int devregtr;
 
 /*
     This module contains some useful functions for process
-    creation, printing on devices... etc. These are taken maily
+    creation, printing on devices... etc. These are taken mainly
     from the given p2test for phase2 and slighly modified.
 */
+
+
+/**
+ * @brief Allow a process to ask with message passing the mutex
+ *        for accessing the swap pool table. If it can't acquire that mutex,
+ *        it will be blocked, until the mutex is released by another pcb
+ *        that has acquired it before and therefore is exiting swap pool.
+ *
+ * @param void
+ * @return void
+ */
+void mutex()
+{
+    unsigned int senderAddr;
+    while (1)
+    {  /* listens for a mutex request */
+        senderAddr = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
+        /* give to the pcb that requested, the mutex */
+
+        /* send a msg to unblock the process */
+        mutexRecv = (pcb_PTR)senderAddr;
+        SYSCALL(SENDMESSAGE, senderAddr, 0, 0);
+
+        /* listens for a mutex release */
+        SYSCALL(RECEIVEMESSAGE, senderAddr, 0, 0);
+    }
+}
+
+/**
+ * @brief Ask for the swap mutex, in order to gain mutual exclusion over the swap pool table.
+ *        If another process is using the swap pool table, the current process is blocked (recv)
+ *        until the other process releases the mutex.
+ *
+ * @param void
+ * @return void
+ */
+void askMutex()
+{
+  SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int)swap_mutex, 0, 0);
+}
+
 
 /**
  * @brief Requests a create process service to the ssi process. The service
