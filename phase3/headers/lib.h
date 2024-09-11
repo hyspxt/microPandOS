@@ -48,7 +48,6 @@ void updateTLB(pteEntry_t);
 int flashOp(int, int, memaddr, int);
 void initSwapStructs(int);
 void pager();
-
 void uTLB_RefillHandler();
 
 /* sysSupport module */
@@ -56,9 +55,10 @@ void supExceptionHandler();
 void supSyscallHandler(state_t*);
 void programTrapHandler();
 
-/* utils (from p2test) */
+/* utils (p2test ) */
 pcb_PTR create_process(state_t*, support_t*);
 support_t *getSupStruct();
+
 void mutex();
 void askMutex();
 void printDevice(int, int);

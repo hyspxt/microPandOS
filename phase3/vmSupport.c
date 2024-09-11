@@ -106,8 +106,7 @@ int flashOp(int asid, int block, memaddr pageAddr, int operation)
   interruptLine 4 is associated with flash devices, and the devNo
   depends on which backing store we're considering (so it depends on UProc asid) */
   unsigned int s;
-  devreg_t *flashReg = (devreg_t &)DEV_REG_ADDR(FLASHINT, asid - 1);
-  // dtpreg_t *flashReg = (dtpreg_t *)DEV_REG_ADDR(FLASHINT, asid - 1);
+  devreg_t *flashReg = (devreg_t *)DEV_REG_ADDR(FLASHINT, asid - 1);
   flashReg->dtp.data0 = pageAddr; /* load the page address, 4k block to read/write */
 
   /* pops p.35 - an operation on a flash device is started by loading the
@@ -126,7 +125,7 @@ int flashOp(int asid, int block, memaddr pageAddr, int operation)
 }
 
 /**
- * @brief Pager component. This is the handler for TLB exceptions.
+ * @brief Pager component. This is the handler for Page Fault exceptions.
  *        Permits the system to manage the virtual memory and address translations.
  *
  * @param void
@@ -149,27 +148,27 @@ void pager()
 
   /* get a frame from the swap pool with a replacement algo,
     determining if it's free and can contain a page */
-  int victim_page = pick_frame();
-  swap_t *spte = &swapPoolTable[victim_page];
-  memaddr victim_page_addr = (memaddr)SWAPPOOL + (victim_page * PAGESIZE);
+  int victimizedPgNo = pick_frame();
+  swap_t *spte = &swapPoolTable[victimizedPgNo];
+  unsigned int victimizedPgAddr = SWAPPOOL + (victimizedPgNo * PAGESIZE);
 
   /* check if the frame is currently occupied */
-  if (!isFrameFree(victim_page))
+  if (!isFrameFree(victimizedPgNo))
   { /* mark page as not valid, atomically disabiliting interrupts - 5.3 specs */
     /* update also the TLB, if needed */
     interrupts_off();
-    pteEntry_t *victim_pte = spte->sw_pte;
-    victim_pte->pte_entryLO &= ~VALIDON; /* mark the page as not valid */
-    updateTLB(*victim_pte);
+    pteEntry_t *victimizedPte = spte->sw_pte;
+    victimizedPte->pte_entryLO &= ~VALIDON; /* mark the page as not valid */
+    updateTLB(*victimizedPte);
     interrupts_on();
 
     /* write on backing store */
-    if (flashOp(spte->sw_asid, spte->sw_pageNo, victim_page_addr, FLASHWRITE) != READY)
+    if (flashOp(spte->sw_asid, spte->sw_pageNo, victimizedPgAddr, FLASHWRITE) != READY)
       programTrapHandler(); /* treat any write/read error on devices as a progtrap */
-  }
+  } 
 
   /* read from backing store */
-  if (flashOp(sup->sup_asid, p, victim_page_addr, FLASHREAD) != READY)
+  if (flashOp(sup->sup_asid, p, victimizedPgAddr, FLASHREAD) != READY)
     programTrapHandler();
 
   /* update the swap pool table */
@@ -179,8 +178,7 @@ void pager()
 
   /* update the current process page table entry */
   interrupts_off();
-  sup->sup_privatePgTbl[p].pte_entryLO |= VALIDON | DIRTYON; /* mark the page as valid and dirty */
-  sup->sup_privatePgTbl[p].pte_entryLO |= victim_page_addr;
+  sup->sup_privatePgTbl[p].pte_entryLO |= VALIDON | DIRTYON | victimizedPgAddr; /* mark the page as valid and dirty */
   updateTLB(sup->sup_privatePgTbl[p]);
   interrupts_on();
 

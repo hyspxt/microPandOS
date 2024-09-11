@@ -58,7 +58,7 @@ void askMutex()
  * @return the pcb pointer to the newly created process
  */
 pcb_PTR create_process(state_t *s, support_t *sup)
-{ /* Protocol: send a msg to ssi -> await for response -> return pcb */
+{ /* Protocol: send a msg to ssi -> await for response -> return its pcb */
     pcb_PTR p;
     ssi_create_process_t ssi_create_process = {
         .state = s,
@@ -116,7 +116,7 @@ void sendKillReq(pcb_PTR p)
  *         message passing and then printed with SSI doio service.
  *         All values (base, command, data0) are calculated accorting to umps - pops
  *
- * @param asid - index of the backing store
+ * @param asid - index of the device
  * @param deviceType - identifies type of device (terminal/printer)
  * @return void
  */
@@ -125,10 +125,9 @@ void printDevice(int asid, int deviceType)
     while (1)
     {
         devregtr *base, *command, *data0, status, value; /* device register values */
-        char *msg;                                       /* char that starts the print */
-
         /* get the sst_print_t pointer in which we found the string to print,
         the message is sent by the writeX, where X is the device type */
+        char *msg;                                       /* char that starts the print */
         unsigned int sender = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)(&msg), 0);
         switch (deviceType)
         {
@@ -152,7 +151,7 @@ void printDevice(int asid, int deviceType)
             switch (deviceType)
             {
             case IL_PRINTER: /* printer transmit the char in data0 over the line */
-                *data0 = (unsigned int)*msg;
+                *data0 = (devregtr)*msg;
                 value = PRINTCHR;
                 break;
             case IL_TERMINAL: /* terminal don't use data0 at all */
