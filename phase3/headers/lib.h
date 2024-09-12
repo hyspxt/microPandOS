@@ -19,7 +19,7 @@ extern pcb_PTR printerPcbs[UPROCMAX];
 extern pcb_PTR terminalPcbs[UPROCMAX];
 extern pcb_PTR sstPcbs[UPROCMAX];
 extern pcb_PTR uproc[UPROCMAX];
-extern pcb_PTR swap_mutex, testPcb, mutexRecv;
+extern pcb_PTR mutexSender, testPcb, mutexRecv;
 
 void test();
 extern void print();
