@@ -183,6 +183,6 @@ void pager()
   interrupts_on();
 
   /* release the mutex */
-  SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
+  SYSCALL(SENDMESSAGE, (unsigned int)mutexSender, 0, 0);
   LDST(supState);
 }

@@ -44,8 +44,8 @@ void mutex()
  */
 void askMutex()
 {
-  SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0);
-  SYSCALL(RECEIVEMESSAGE, (unsigned int)swap_mutex, 0, 0);
+  SYSCALL(SENDMESSAGE, (unsigned int)mutexSender, 0, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int)mutexSender, 0, 0);
 }
 
 

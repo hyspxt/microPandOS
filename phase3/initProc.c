@@ -16,7 +16,7 @@ state_t printerState[UPROCMAX], terminalState[UPROCMAX];
 /* each swap pool is a set of RAM frames, reserved for vm */
 swap_t swapPoolTable[POOLSIZE];
 /* these process will be test_pcb children */
-pcb_PTR swap_mutex;  /* pcb that listens requests and GIVES the mutex */
+pcb_PTR mutexSender;  /* pcb that listens requests and GIVES the mutex */
 pcb_PTR mutexRecv; /* pcb that RECEIVE and RELEASE the mutex */
 
 /* specs -> have a process for each device that waits for
@@ -242,7 +242,7 @@ void test()
     mutexState.reg_sp = (memaddr)ramtop;
     mutexState.status = ALLOFF | IECON | IMON | TEBITON;
     ramtop -= PAGESIZE;
-    swap_mutex = create_process(&mutexState, NULL);
+    mutexSender = create_process(&mutexState, NULL);
 
     /* user process (UPROC)/flash initialization - 10.1 specs */
     /* also SST processes are initialized here (their fathers), 

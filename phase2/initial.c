@@ -128,6 +128,8 @@ void uTLB_RefillHandler()
     p = MAXPAGES - 1;
 
   /* set the entryhi and entrylo, with supStruct of curr_proc */
+  /* calling a getSupStruct() here caused a tlb loop, maybe this is why 
+  specs said that phase2-3 should have no upward interaction? */
   setENTRYHI(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryHI);
   setENTRYLO(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryLO);
   /* write the TLB */

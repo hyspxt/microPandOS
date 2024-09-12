@@ -50,8 +50,8 @@ void programTrapHandler()
     } /* if the calling process is the mutex holder
     we need to release it before the termination, otherwise the
     mutex will be locked indefinetely */
-    if (current_process == mutexRecv) /* not swap_mutex is the mutex giver/releaser */
-        SYSCALL(SENDMESSAGE, (unsigned int)swap_mutex, 0, 0); /* send to unblock mutex */
+    if (current_process == mutexRecv)
+        SYSCALL(SENDMESSAGE, (unsigned int)mutexSender, 0, 0); /* send to unblock mutex */
     /* kill the calling sst */
     sendKillReq(NULL);
 }
