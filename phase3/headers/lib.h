@@ -19,7 +19,7 @@ extern pcb_PTR printerPcbs[UPROCMAX];
 extern pcb_PTR terminalPcbs[UPROCMAX];
 extern pcb_PTR sstPcbs[UPROCMAX];
 extern pcb_PTR uproc[UPROCMAX];
-extern pcb_PTR mutexSender, testPcb, mutexRecv;
+extern pcb_PTR swap_mutex, testPcb, mutexRecv;
 
 void test();
 extern void print();
@@ -58,14 +58,10 @@ void programTrapHandler();
 /* utils (p2test ) */
 pcb_PTR create_process(state_t*, support_t*);
 support_t *getSupStruct();
-
 void mutex();
 void askMutex();
 void printDevice(int, int);
 void sendKillReq(pcb_PTR);
-
-
-
 #endif
 
 

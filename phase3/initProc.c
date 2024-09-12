@@ -28,53 +28,87 @@ pcb_PTR testPcb;
 
 memaddr ramtop; /* mind that grow downwards */
 
-// struct list_head freeSupStructs;
-// support_t *allocateSupStructs{
-//     support_t *sup = container_of(freeSupStructs.next, support_t, s_list);
-//     list_del(freeSupStructs.next);
-//     return sup;
-// }
+/* alloc functions for supStructs, not yet fully implemented
+struct list_head freeSupStructs;
+support_t *allocateSupStructs{
+    support_t *sup = container_of(freeSupStructs.next, support_t, s_list);
+    list_del(freeSupStructs.next);
+    return sup;
+}
 
-// void freeSupStructs(support_t *sup){
-//     list_add_tail(&sup->s_list, &freeSupStructs);
-// }
+void freeSupStructs(support_t *sup){
+    list_add_tail(&sup->s_list, &freeSupStructs);
+}
+*/
 
 /* pointer functions which address will be assigned to pc_epc field in pcb
    associated with peripheral devices (IL_TERMINAL and IL_PRINTER).
    IL_FLASH will be treated as backing store for uprocs */
 void (*printer0()) { 
-    printDevice(0, IL_PRINTER); return (void *)0;}
+    printDevice(0, IL_PRINTER); 
+    return (void *)0;
+}
 void (*printer1()) {
-    printDevice(1, IL_PRINTER); return (void *)0;}
+    printDevice(1, IL_PRINTER); 
+    return (void *)0;
+}
 void (*printer2()) {
-    printDevice(2, IL_PRINTER); return (void *)0;}
+    printDevice(2, IL_PRINTER); 
+    return (void *)0;
+}
 void (*printer3()) {
-    printDevice(3, IL_PRINTER); return (void *)0;}
+    printDevice(3, IL_PRINTER); 
+    return (void *)0;
+}
 void (*printer4()) {
-    printDevice(4, IL_PRINTER); return (void *)0;}
+    printDevice(4, IL_PRINTER); 
+    return (void *)0;
+}
 void (*printer5()) {
-    printDevice(5, IL_PRINTER); return (void *)0;}
+    printDevice(5, IL_PRINTER); 
+    return (void *)0;
+}
 void (*printer6()) {
-    printDevice(6, IL_PRINTER); return (void *)0;}
+    printDevice(6, IL_PRINTER); 
+    return (void *)0;
+}
 void (*printer7()) {
-    printDevice(7, IL_PRINTER); return (void *)0;}
+    printDevice(7, IL_PRINTER); 
+    return (void *)0;
+}
 
 void (*terminal0()) {
-    printDevice(0, IL_TERMINAL); return (void *)0;}
+    printDevice(0, IL_TERMINAL); 
+    return (void *)0;
+}
 void (*terminal1()) {
-    printDevice(1, IL_TERMINAL); return (void *)0;}
+    printDevice(1, IL_TERMINAL); 
+    return (void *)0;
+}
 void (*terminal2()) {
-    printDevice(2, IL_TERMINAL); return (void *)0;}
+    printDevice(2, IL_TERMINAL); 
+    return (void *)0;
+}
 void (*terminal3()) {
-    printDevice(3, IL_TERMINAL); return (void *)0;}
+    printDevice(3, IL_TERMINAL); 
+    return (void *)0;
+}
 void (*terminal4()) {
-    printDevice(4, IL_TERMINAL); return (void *)0;}
+    printDevice(4, IL_TERMINAL); 
+    return (void *)0;
+}
 void (*terminal5()) {
-    printDevice(5, IL_TERMINAL); return (void *)0;}
+    printDevice(5, IL_TERMINAL); 
+    return (void *)0;
+}
 void (*terminal6()) {
-    printDevice(6, IL_TERMINAL); return (void *)0;}
+    printDevice(6, IL_TERMINAL); 
+    return (void *)0;
+}
 void (*terminal7()) {
-    printDevice(7, IL_TERMINAL); return (void *)0;}
+    printDevice(7, IL_TERMINAL); 
+    return (void *)0;
+}
 
 /**
  * @brief Initialize the user processes (UPROC) which will be used as SST child to write/read
@@ -139,31 +173,6 @@ void initSupportStruct()
 }
 
 /**
- * @brief Initialize UPROCMAX SST processes, which will create then the child
- *        user processes. Each SST process will then be delegated to resolve
- *        the requests that the child process submits to it.
- *
- * @param void
- * @return void
- */
-void initSST()
-{
-    for (int i = 0; i < UPROCMAX; i++)
-    {
-        sstProcState[i].pc_epc = (memaddr)SST;
-        sstProcState[i].reg_sp = (memaddr)ramtop;
-        sstProcState[i].status = ALLOFF | IEPON | IMON | TEBITON;
-        sstProcState[i].entry_hi = (i + 1) << ASIDSHIFT;
-        /* create the SST process, supStruct will be used for retrieving asid
-        to let the SST create the father -> child association. Technically,
-        asid is non-retrievable from the state, hence in this way a certain
-        child can inherit father (SST) support struct */
-        sstPcbs[i] = create_process(&sstProcState[i], &supStruct[i]);
-        ramtop -= PAGESIZE;
-    }
-}
-
-/**
  * @brief Initialize the peripheral processes, which will be used to handle
  *        the print function of the terminal and printer devices.
  *        Mind that the OS can handle max UPROC devices.
@@ -215,6 +224,32 @@ void initPeripheralProc(int asid, int devNo)
     ramtop -= PAGESIZE;
 }
 
+
+/**
+ * @brief Initialize UPROCMAX SST processes, which will create then the child
+ *        user processes. Each SST process will then be delegated to resolve
+ *        the requests that the child process submits to it.
+ *
+ * @param void
+ * @return void
+ */
+void initSST()
+{
+    for (int i = 0; i < UPROCMAX; i++)
+    {
+        sstProcState[i].pc_epc = (memaddr)SST;
+        sstProcState[i].reg_sp = (memaddr)ramtop;
+        sstProcState[i].status = ALLOFF | IEPON | IMON | TEBITON;
+        sstProcState[i].entry_hi = (i + 1) << ASIDSHIFT;
+        /* create the SST process, supStruct will be used for retrieving asid
+        to let the SST create the father -> child association. Technically,
+        asid is non-retrievable from the state, hence in this way a certain
+        child can inherit father (SST) support struct */
+        sstPcbs[i] = create_process(&sstProcState[i], &supStruct[i]);
+        ramtop -= PAGESIZE;
+    }
+}
+
 /**
  * @brief Test function that initializes the SST and UPROCS.
  *
@@ -230,7 +265,7 @@ void test()
     RAMTOP(ramtop);
     /* starting 3 frames from (under) RAMTOP since first frame is taken
     by ssi and second by test pcb */
-    ramtop -= (3 * PAGESIZE);
+    ramtop = ramtop - 3 * PAGESIZE;
 
     /* Swap table initialization */
     for (int i = 0; i < POOLSIZE; i++)
@@ -265,8 +300,8 @@ void test()
     for (int i = 0; i < UPROCMAX; i++)
     {
         SYSCALL(RECEIVEMESSAGE, (unsigned int)sstPcbs[i], 0, 0);
-        outProcQ(&readyQueue, sstPcbs[i]);
         /* to make sure that all SST are killed when their job is done */
+        outProcQ(&readyQueue, sstPcbs[i]);
         freePcb(sstPcbs[i]);
     } /* kill the test and its progeny */
     sendKillReq(NULL);

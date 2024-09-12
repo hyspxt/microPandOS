@@ -21,25 +21,6 @@ void initSwapStructs(int entryid)
 }
 
 /**
- * @brief Pick a frame from the SPT according to a replacement algorithm.
- *        The algorithm is a simple FIFO, that returns the first free frame found.
- *        If no free frame is found, the algorithm returns the first frame in the pool.
- *
- * @param void
- * @return unsigned int - the frame number
- */
-int pick_frame()
-{
-  static unsigned int counter = -1;
-  for (int i = 0; i < POOLSIZE; i++)
-  {
-    if (isFrameFree(i))
-      return i;
-  } /* increment mod POOLSIZE */
-  return (counter++ % POOLSIZE);
-}
-
-/**
  * @brief Check if a frame is free in the swap pool table.
  *
  * @param int i - the frame number
@@ -75,6 +56,25 @@ void interrupts_on()
 }
 
 /**
+ * @brief Pick a frame from the SPT according to a replacement algorithm.
+ *        The algorithm is a simple FIFO, that returns the first free frame found.
+ *        If no free frame is found, the algorithm returns the first frame in the pool.
+ *
+ * @param void
+ * @return unsigned int - the frame number
+ */
+int pick_frame()
+{
+  static unsigned int counter = -1;
+  for (int i = 0; i < POOLSIZE; i++)
+  {
+    if (isFrameFree(i))
+      return i;
+  } /* increment mod POOLSIZE */
+  return (counter++ % POOLSIZE);
+}
+
+/**
  * @brief Update the TLB with the new page table entry.
  *        If the page is not cached, the entry is written in the TLB.
  *
@@ -94,7 +94,7 @@ void updateTLB(pteEntry_t pte)
 }
 
 /**
- * @brief Perform a read/write operation on uproc's backing store. This is 
+ * @brief Perform a read/write operation on uproc's flash device. This is 
  *        done requesting a DOIO service to the SSI, since backing store
  *        are treated as flash devices.
  *
