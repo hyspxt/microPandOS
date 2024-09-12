@@ -63,8 +63,3 @@ void askMutex();
 void printDevice(int, int);
 void sendKillReq(pcb_PTR);
 #endif
-
-
-
-
-
