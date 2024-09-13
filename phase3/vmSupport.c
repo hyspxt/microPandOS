@@ -61,7 +61,7 @@ void interrupts_on()
  *        If no free frame is found, the algorithm returns the first frame in the pool.
  *
  * @param void
- * @return unsigned int - the frame number
+ * @return int - the frame number of the free/victimized page
  */
 int pick_frame()
 {
@@ -98,8 +98,11 @@ void updateTLB(pteEntry_t pte)
  *        done requesting a DOIO service to the SSI, since backing store
  *        are treated as flash devices.
  *
- * @param pteEntry_t - the page table entry
- * @return void
+ * @param int asid - the address space identifier
+ * @param int block - the block number on which the operation is performed (that is page number)
+ * @param memaddr pageAddr - the page address
+ * @param int operation - the operation to perform (FLASHREAD/FLASHWRITE)
+ * @return int - the status of the operation (1 if successful, 0 otherwise)
  */
 int flashOp(int asid, int block, memaddr pageAddr, int operation)
 { /* take the register as a non-terminal device register

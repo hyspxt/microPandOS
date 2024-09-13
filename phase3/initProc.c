@@ -17,7 +17,7 @@ state_t printerState[UPROCMAX], terminalState[UPROCMAX];
 swap_t swapPoolTable[POOLSIZE];
 /* these process will be test_pcb children */
 pcb_PTR mutexSender;  /* pcb that listens requests and GIVES the mutex */
-pcb_PTR mutexRecv; /* pcb that RECEIVE and RELEASE the mutex */
+pcb_PTR mutexRecv; /* pcb that RECEIVE and trigger the RELEASE of the mutex */
 
 /* specs -> have a process for each device that waits for
 messages and requests the single DoIO to the SSI */
@@ -34,10 +34,6 @@ support_t *allocateSupStructs{
     support_t *sup = container_of(freeSupStructs.next, support_t, s_list);
     list_del(freeSupStructs.next);
     return sup;
-}
-
-void freeSupStructs(support_t *sup){
-    list_add_tail(&sup->s_list, &freeSupStructs);
 }
 */
 
@@ -136,7 +132,7 @@ void initUProc()
  *        entries for each UPROC. Page table entries are 64 bits long.
  *        Specs -> only context[2], pgtbl[32] and asid are needed.
  *
- * @param int asid - the address space identifier
+ * @param void
  * @return void
  */
 void initSupportStruct()
@@ -227,7 +223,7 @@ void initPeripheralProc(int asid, int devNo)
 
 /**
  * @brief Initialize UPROCMAX SST processes, which will create then the child
- *        user processes. Each SST process will then be delegated to resolve
+ *        user proceses. Each SST process will then be delegated to resolve
  *        the requests that the child process submits to it.
  *
  * @param void
@@ -251,7 +247,7 @@ void initSST()
 }
 
 /**
- * @brief Test function that initializes the SST and UPROCS.
+ * @brief Test function that initializes the entire support level structures.
  *
  * @param void
  * @return void
@@ -278,6 +274,7 @@ void test()
     mutexState.status = ALLOFF | IECON | IMON | TEBITON;
     ramtop -= PAGESIZE;
     mutexSender = create_process(&mutexState, NULL);
+    /* mutex request are now active */
 
     /* user process (UPROC)/flash initialization - 10.1 specs */
     /* also SST processes are initialized here (their fathers), 
@@ -287,8 +284,8 @@ void test()
 
     /* UPROCMAX SST process initialization */
     initSST();
-
-    /* mutex request are now active */
+    
+    /* peripheral pcbs that listens for DOIO requests */
     for (int i = 0; i < UPROCMAX; i++)
     {
         initPeripheralProc(i, IL_PRINTER);

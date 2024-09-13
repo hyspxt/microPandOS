@@ -7,7 +7,6 @@ typedef unsigned int devregtr;
     from the given p2test for phase2 and slighly modified.
 */
 
-
 /**
  * @brief Allow a process to ask with message passing the mutex
  *        for accessing the swap pool table. If it can't acquire that mutex,
@@ -116,19 +115,19 @@ void sendKillReq(pcb_PTR p)
  *         message passing and then printed with SSI doio service.
  *         All values (base, command, data0) are calculated accorting to umps - pops
  *
- * @param asid - index of the device
- * @param deviceType - identifies type of device (terminal/printer)
+ * @param int asid - index of the device
+ * @param int deviceType - identifies type of device (terminal/printer)
  * @return void
  */
 void printDevice(int asid, int deviceType)
 {
     while (1)
     {
-        devregtr *base, *command, *data0, status, value; /* device register values */
         /* get the sst_print_t pointer in which we found the string to print,
         the message is sent by the writeX, where X is the device type */
         char *msg;                                       /* char that starts the print */
         unsigned int sender = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int)(&msg), 0);
+        devregtr *base, *command, *data0, status, value; /* device register values */
         switch (deviceType)
         {
         case IL_PRINTER:                     /* pops p.39 for printers */
@@ -137,9 +136,9 @@ void printDevice(int asid, int deviceType)
             command = base + 1;              /* COMMAND field p28 pops */
             data0 = base + 2;                /* DATA0 field where to put char to print */
             break;
-        case IL_TERMINAL:                   /* pops p.41 for terminals */
-            base = (devregtr *)(TERM0ADDR); /* base device address for terminal 0 */
-            base += asid * DEVREGLEN;       /* offset for the device */
+        case IL_TERMINAL:                    /* pops p.41 for terminals */
+            base = (devregtr *)(TERM0ADDR);  /* base device address for terminal 0 */
+            base += asid * DEVREGLEN;        /* offset for the device */
             /* this because there are 4 (0-3) possible fields in the layout, so
             (0-3) is the field layout for devNo 0, and (4-7) for devNo 1 */
             data0 = base + 2; /* we want TRANSM_COMMAND that is in fact 3rd and last field */

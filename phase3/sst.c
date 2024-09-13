@@ -58,7 +58,7 @@ void writeTerminal(int asid, sst_print_PTR print)
 
 /**
  * @brief Handles the SST requests during SST loop, dispatching the actual service called
- * 		  and returning eventually a meaningful value (getTod()).
+ * 		  and returning a value / ACK.
  *
  * @param pcb_PTR sender - the child that requested the service
  * @param unsigned int service - code of the service requested
@@ -119,6 +119,6 @@ void SST()
 		ssi_payload_PTR sstpyld = (ssi_payload_PTR)payload;
 		result = SSTRequest((pcb_PTR)senderAddr, sstpyld->service_code, sstpyld->arg, sstSup->sup_asid - 1);
         /* everything went fine, so we obtained the result of SST the request, now send it back*/
-	    SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
+	    SYSCALL(SENDMESSAGE, senderAddr, result, 0);
 	}
 }

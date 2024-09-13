@@ -216,8 +216,6 @@
 #define SWAPPOOL (RAMSTART + (MAXPAGES * PAGESIZE))
 #define TLBINVLDM 1
 #define TERM0ADDR 0x10000254 /* taken from p2test */
-#define TERMSTATMASK 0xFF
 #define PRINT0ADDR 0x100001d4 /* dec_to_hex -> DEV_REG_ADDR(6, 0) */
-#define GET_VPN(x) MIN(ENTRYHI_GET_VPN(x), 31)
 
 #endif

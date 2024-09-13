@@ -59,12 +59,6 @@ unsigned int isPcbBlockedOnDevice(pcb_PTR sender)
 	}
 	else 
 		return 0;
-
-		// return (outProcQ(&blockedTerminalRecvQueue, sender) != NULL || outProcQ(&blockedTerminalTransmQueue, sender) != NULL ||
-		// 	outProcQ(&blockedDiskQueue, sender) != NULL || outProcQ(&blockedFlashQueue, sender) != NULL ||
-		// 	outProcQ(&blockedEthernetQueue, sender) != NULL || outProcQ(&blockedPrinterQueue, sender) != NULL ||
-		// 	outProcQ(&pseudoClockQueue, sender) != NULL);
-	
 }
 
 /**

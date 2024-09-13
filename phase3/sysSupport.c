@@ -11,6 +11,7 @@
  *        is called, either by USYS1, USYS2,.... Handles the sytem calls only for the support 
  *        level, working as a wrapper for the services defined in the nucleus.
  *
+ * @param state_t *excState - the state of the processor at the time of the exception
  * @return void
  */
 void supSyscallHandler(state_t *excState)
@@ -29,6 +30,7 @@ void supSyscallHandler(state_t *excState)
         SYSCALL(RECEIVEMESSAGE, dest, excState->reg_a2, 0);
         break;
     default:
+        PANIC();
         break;
     }
 }
@@ -59,6 +61,7 @@ void programTrapHandler()
 /**
  * @brief General exception handler for the Support Level that redirects to the appropriate handler
  *        based on the cause/type of the singular exception occurred.
+ *        At the end, the state is restored.
  *
  * @param void
  * @return void
