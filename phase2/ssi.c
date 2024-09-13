@@ -339,7 +339,6 @@ void SSI()
 		if (result != NOPROC) /* NOPROC is provided when requesting service that doesn't provide any pcb */
 		{					  /* everything went fine, so we obtained the result of the request, now send it back*/
 			SYSCALL(SENDMESSAGE, (unsigned int)senderAddr, result, 0);
-
 		}
 	}
 }

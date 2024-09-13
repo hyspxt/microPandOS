@@ -34,7 +34,7 @@ extern void test();
 /* -- FUNCTIONS PROTOTYPES -- */
 /* nucleus module */
 void stateCpy(state_t *, state_t *);
-// void stateCPY4debug(state_t *, state_t *); This contained a lot of klog_prints
+/* void stateCPY4debug(state_t *, state_t *); This contained a lot of klog_prints */
 /* phase 2 definition
 void uTLB_RefillHandler(){
     setENTRYHI(0x80000000);
@@ -42,17 +42,6 @@ void uTLB_RefillHandler(){
     TLBWR();
     LDST((state_t*) 0x0FFFF000);
 } */
-/**
- * @brief The TLB-Refill event Handler. This type of event is triggered
- *        whenever a TLB exception occurs, that is, when we try to access
- *        a page that is not in the TLB. So, it's a cache-miss event.
- *        Hence, this handler is responsible for loading the
- *        missing page table entry and restart the instruction.
- *        note. Previous definition (for phase2) is found in lib.h, commented.
- *          
- * @param void
- * @return int
- */
 extern void uTLB_RefillHandler();
 
 /* ssi module*/
