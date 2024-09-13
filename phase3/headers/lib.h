@@ -29,7 +29,6 @@ extern void print();
 void initUProc();
 void initSupportStruct();
 void initSST();
-memaddr nextFrame(memaddr);
 void initPeripheralProc(int, int);
 
 /* SST module */
@@ -40,13 +39,13 @@ void SST();
 unsigned int SSTRequest(pcb_PTR, unsigned int, void*, int);
 
 /* vmSupport module */
+void initSwapStructs(int);
 int pick_frame();
 int isFrameFree(int);
 void interrupts_off();
 void interrupts_on();
 void updateTLB(pteEntry_t);
 int flashOp(int, int, memaddr, int);
-void initSwapStructs(int);
 void pager();
 void uTLB_RefillHandler();
 

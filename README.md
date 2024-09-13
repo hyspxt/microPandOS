@@ -1,8 +1,8 @@
 # µPandOS
 µPandOS is a simple, yet complete, Operative System
+Provided with phase2 - Nucleus and phase3 - Suppor
 
 ## Compiling
-
 - Project compiling is done by launching:
     ```sh
     make
@@ -20,4 +20,4 @@
     make cleantest
     ``` 
 
-There is also a config example of the simulation machine (```fin```).
+There is also a config example of the simulation machine (```umps3```).
