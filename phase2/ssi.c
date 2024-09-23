@@ -78,9 +78,7 @@ void terminateProcess(pcb_PTR sender)
 		return;
 
 	while (!emptyChild(sender))
-	{
 		terminateProcess(removeChild(sender));
-	}
 
 	if (isPcbBlockedOnDevice(sender))
 		softBlockCount--;

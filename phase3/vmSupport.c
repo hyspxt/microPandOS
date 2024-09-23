@@ -65,7 +65,7 @@ void interrupts_on()
  */
 int pick_frame()
 {
-  static unsigned int counter = -1;
+  static int counter = -1; /* correction, -> this was an unsigned int */
   for (int i = 0; i < POOLSIZE; i++)
   {
     if (isFrameFree(i))
@@ -87,7 +87,7 @@ void updateTLB(pteEntry_t pte)
   TLBP(); /* TLB probing */
   if ((getINDEX() & PRESENTFLAG) == 0)
   { /* not cached */
-    setENTRYHI(pte.pte_entryHI);
+    /* correction -> setENTRYHI not necessary */
     setENTRYLO(pte.pte_entryLO);
     TLBWI(); /* write entry */
   }
