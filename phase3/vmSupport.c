@@ -181,7 +181,10 @@ void pager()
 
   /* update the current process page table entry */
   interrupts_off();
-  sup->sup_privatePgTbl[p].pte_entryLO |= VALIDON | DIRTYON | victimizedPgAddr; /* mark the page as valid and dirty */
+  sup->sup_privatePgTbl[p].pte_entryLO |= VALIDON | DIRTYON;
+  sup->sup_privatePgTbl[p].pte_entryLO &= 0xFFF;
+  /* correction -> clear the PNF but preserve the last 12 bits */
+  sup->sup_privatePgTbl[p].pte_entryLO |=  victimizedPgAddr; /* mark the page as valid and dirty */
   updateTLB(sup->sup_privatePgTbl[p]);
   interrupts_on();
 
