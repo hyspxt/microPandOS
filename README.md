@@ -1,6 +1,9 @@
 # µPandOS
-µPandOS is a simple, yet complete, Operative System
-Provided with phase2 - Nucleus and phase3 - Suppor
+
+µPandOS is a simple, yet complete, Operative System built on three levels:
+- Level 1 - Queue Manager
+- Level 2 - Nucleus
+- Level 3 - Support
 
 ## Compiling
 - Project compiling is done by launching:
